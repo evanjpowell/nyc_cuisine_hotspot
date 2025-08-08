@@ -75,6 +75,37 @@ list_cuisines <- function(data) {
 cuisine_counts <- list_cuisines(restaurants_unique)
 ```
 
+
+```{r clustering}
+run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
+ # 1. Filter for the chosen cuisine
+  cuisine_data <- data %>%
+    filter(cuisine_description == cuisine) 
+ # 2. Prepare coordinates matrix
+  coords <- cuisine_data %>%
+    select(longitude, latitude) %>%
+    as.matrix()
+  # 3. Run DBSCAN
+  db_result <- dbscan::dbscan(coords, eps = eps, minPts = minPts)
+  # 4. Add cluster assignments back to data
+  cuisine_data <- cuisine_data %>%
+    mutate(cluster = db_result$cluster)
+  
+  return(cuisine_data)
+}
+```
+
+```{r example}
+peruvian_clusters <- run_dbscan_for_cuisine(
+  data = restaurants_unique,
+  cuisine = "Peruvian",
+  eps = 0.005,   # ~500 meters
+  minPts = 5
+)
+
+head(peruvian_clusters)
+```
+
 ## R Markdown
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
