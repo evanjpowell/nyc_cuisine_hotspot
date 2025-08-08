@@ -18,6 +18,7 @@ library(tidycensus)
 library(tigris)
 library(skimr)
 library(RSocrata)
+library(RColorBrewer)
 
 ```
 
@@ -78,9 +79,15 @@ cuisine_counts <- list_cuisines(restaurants_unique)
 
 ```{r clustering}
 run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
- # 1. Filter for the chosen cuisine
+ # 1. Filter for the chosen cuisine and remove null island coords
   cuisine_data <- data %>%
-    filter(cuisine_description == cuisine) 
+    filter(
+      cuisine_description == cuisine,
+      !is.na(latitude),
+      !is.na(longitude),
+      latitude != 0,
+      longitude != 0
+    )
  # 2. Prepare coordinates matrix
   coords <- cuisine_data %>%
     select(longitude, latitude) %>%
@@ -93,18 +100,127 @@ run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
   
   return(cuisine_data)
 }
+
+run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.005, min_floor = 3, prop_factor = 0.02) {
+ # 1. Filter for the chosen cuisine and remove null island coords
+  cuisine_data <- data %>%
+    filter(
+      cuisine_description == cuisine,
+      !is.na(latitude),
+      !is.na(longitude),
+      latitude != 0,
+      longitude != 0
+    )
+  
+  total_count <- nrow(cuisine_data)
+  if (total_count == 0) {
+    warning("No restaurants found for cuisine: ", cuisine)
+    return(NULL)
+  }
+  
+  # 2. Calculate minPts dynamically
+  minPts <- max(min_floor, round(total_count * prop_factor))
+    
+ # 3. Prepare coordinates matrix
+  coords <- cuisine_data %>%
+    select(longitude, latitude) %>%
+    as.matrix()
+  # 3. Run DBSCAN
+  db_result <- dbscan::dbscan(coords, eps = eps, minPts = minPts)
+  # 5. Add cluster assignments back to data
+  cuisine_data <- cuisine_data %>%
+    mutate(cluster = db_result$cluster)
+  
+  # Attach settings used
+  attr(cuisine_data, "dbscan_params") <- list(
+    eps = eps,
+    minPts = minPts,
+    total_count = total_count
+  )
+  
+  return(cuisine_data)
+}
+
 ```
 
-```{r example}
-peruvian_clusters <- run_dbscan_for_cuisine(
+``` {r mapping}
+map_dbscan_clusters <- function(clustered_data) {
+  
+  clustered_data <- clustered_data %>%
+    filter(latitude != 0, longitude != 0) %>%
+    mutate(cluster = as.factor(cluster))
+  
+  clustered_sf <- st_as_sf(
+    clustered_data,
+    coords = c("longitude", "latitude"),
+    crs = 4326,   # WGS84 lat/long
+    remove = FALSE
+  )
+  
+  # Dynamically create enough colors for the number of clusters
+  num_clusters <- length(unique(clustered_sf$cluster))
+  colors <- brewer.pal(
+    n = max(3, min(12, num_clusters)),  # palettes max out at 12 colors
+    name = "Set1"
+  )
+  
+  tmap_mode("view")  # interactive mode
+  
+  tm_shape(clustered_sf) +
+    tm_dots(
+      col = "cluster",        # color by cluster ID
+      palette = colors,       # distinct colors
+      size = 0.55,            # small points
+      alpha = 0.7,            # semi-transparent
+      title = "Cluster ID"
+    ) +
+    tm_layout(legend.outside = TRUE)
+  
+}
+```
+
+``` {r example Caribbean}
+caribbean_clusters <- run_dbscan_for_cuisine(
   data = restaurants_unique,
-  cuisine = "Peruvian",
-  eps = 0.005,   # ~500 meters
+  cuisine = "Caribbean",
+  eps = 0.0075,  
   minPts = 5
 )
 
-head(peruvian_clusters)
+head(caribbean_clusters)
+
+map_dbscan_clusters(caribbean_clusters)
 ```
+
+
+``` {r example Chinese}
+chinese_clusters <- run_dbscan_for_cuisine(
+  data = restaurants_unique,
+  cuisine = "Chinese",
+  eps = 0.005,  
+  minPts = 9
+)
+
+
+map_dbscan_clusters(chinese_clusters)
+```
+
+``` {r example any}
+
+test_cuisine = "Peruvian"
+
+test_cuisine_clusters <- run_dbscan_for_cuisine_auto(
+  data = restaurants_unique,
+  cuisine = test_cuisine,
+  eps = 0.007,  
+  min_floor = 4,
+  prop_factor = 0.01
+)
+
+
+map_dbscan_clusters(test_cuisine_clusters)
+```
+
 
 ## R Markdown
 
