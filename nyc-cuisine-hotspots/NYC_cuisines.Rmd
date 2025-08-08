@@ -17,7 +17,62 @@ library(leaflet)
 library(tidycensus)
 library(tigris)
 library(skimr)
+library(RSocrata)
 
+```
+
+```{r reading nyc data}
+#read data from NYC Open Data
+restaurants <- read.socrata(
+  "https://data.cityofnewyork.us/resource/43nn-pn8j.json",
+  app_token = Sys.getenv("SOCRATA_APP_TOKEN"),
+  email     = Sys.getenv("SOCRATA_EMAIL"),
+  password  = Sys.getenv("SOCRATA_PASSWORD")
+)
+```
+
+``` {r local save}
+saveRDS(restaurants, "restaurants.rds")
+
+```
+```{r local retrieve}
+restaurants <- readRDS("restaurants.rds")
+```
+
+```{r clean data}
+#Remove columns we don't need
+restaurants <- restaurants %>%
+  select(camis, dba, cuisine_description, latitude, longitude)
+
+#Make numeric the Lat / Long.
+restaurants <- restaurants %>%
+  mutate(
+    latitude = as.numeric(latitude),
+    longitude = as.numeric(longitude)
+  )
+
+#drop rows without Lat / Long. or cuisine description
+restaurants <- restaurants %>%
+  filter(
+    !is.na(latitude),
+    !is.na(longitude),
+    !is.na(cuisine_description)
+  )
+
+#deduplicate
+restaurants_unique <- restaurants %>%
+  distinct(camis, .keep_all = TRUE)
+```
+
+```{r listing cuisines}
+list_cuisines <- function(data) {
+  data %>%
+    group_by(cuisine_description) %>%
+    summarise(n = n(), .groups = "drop") %>%
+    arrange(desc(n))
+}
+
+cuisine_counts <- list_cuisines(restaurants_unique)
 ```
 
 ## R Markdown
