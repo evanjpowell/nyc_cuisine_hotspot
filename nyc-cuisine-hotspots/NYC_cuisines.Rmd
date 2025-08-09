@@ -43,7 +43,7 @@ restaurants <- readRDS("restaurants.rds")
 ```{r clean data}
 #Remove columns we don't need
 restaurants <- restaurants %>%
-  select(camis, dba, cuisine_description, latitude, longitude)
+  select(camis, dba, boro, cuisine_description, latitude, longitude)
 
 #Make numeric the Lat / Long.
 restaurants <- restaurants %>%
@@ -76,6 +76,7 @@ list_cuisines <- function(data) {
 cuisine_counts <- list_cuisines(restaurants_unique)
 ```
 
+## Basic Clustering
 
 ```{r clustering}
 run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
@@ -143,6 +144,7 @@ run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.005, min_floor = 
 
 ```
 
+
 ``` {r mapping}
 map_dbscan_clusters <- function(clustered_data) {
   
@@ -207,7 +209,7 @@ map_dbscan_clusters(chinese_clusters)
 
 ``` {r example any}
 
-test_cuisine = "Peruvian"
+test_cuisine = "Steakhouse"
 
 test_cuisine_clusters <- run_dbscan_for_cuisine_auto(
   data = restaurants_unique,
@@ -222,22 +224,92 @@ map_dbscan_clusters(test_cuisine_clusters)
 ```
 
 
-## R Markdown
+## Clustering with Respect to Borough Densities
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r clustering by boro}
+run_dbscan_by_borough <- function(data, cuisine, eps_values, min_floor = 3, prop_factor = 0.02) {
+  
+  # eps_values = named vector with borough groupings
+  # e.g., c("Manhattan" = 0.0025, "Brooklyn/Queens" = 0.005, "Bronx" = 0.006, "Staten Island" = 0.008)
+  
+  # Filter for chosen cuisine & clean coords
+  cuisine_data <- data %>%
+    filter(
+      cuisine_description == cuisine,
+      !is.na(latitude),
+      !is.na(longitude),
+      latitude != 0,
+      longitude != 0
+    )
+  
+  # Dynamic minPts based on citywide restaurant count
+  total_count <- nrow(cuisine_data)
+  minPts <- max(min_floor, round(total_count * prop_factor))
+  
+  # Group boroughs
+  cuisine_data <- cuisine_data %>%
+    mutate(boro_group = case_when(
+      boro == "Manhattan" ~ "Manhattan",
+      boro %in% c("Brooklyn", "Queens") ~ "Brooklyn/Queens",
+      boro == "Bronx" ~ "Bronx",
+      boro == "Staten Island" ~ "Staten Island",
+      TRUE ~ "Other"
+    ))
+  
+  all_results <- list()
+  cluster_offset <- 0
+  
+  # Loop through each borough group
+  for (grp in unique(cuisine_data$boro_group)) {
+    eps <- eps_values[[grp]]
+    
+    sub_data <- cuisine_data %>% filter(boro_group == grp)
+    
+    if (nrow(sub_data) == 0) next
+    
+    
+    coords <- sub_data %>%
+      select(longitude, latitude) %>%
+      as.matrix()
+    
+    db_result <- dbscan::dbscan(coords, eps = eps, minPts = minPts)
+    
+    # Offset cluster IDs so they are unique across boroughs
+    sub_data <- sub_data %>%
+      mutate(cluster = ifelse(db_result$cluster == 0, 0, db_result$cluster + cluster_offset))
+    
+    # Update offset for next borough
+    cluster_offset <- max(sub_data$cluster)
+    
+    all_results[[grp]] <- sub_data
+  }
+  
+  final_data <- bind_rows(all_results)
+  
+  return(final_data)
+}
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
+```{r example boro any}
 
-You can also embed plots, for example:
+eps_settings <- c(
+  "Manhattan" = 0.004,
+  "Brooklyn/Queens" = 0.007,
+  "Bronx" = 0.005,
+  "Staten Island" = 0.008
+)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+boro_test_cuisine = "Middle Eastern"
+
+test2_clusters <- run_dbscan_by_borough(
+  data = restaurants_unique,
+  cuisine = boro_test_cuisine,
+  eps_values = eps_settings,
+  min_floor = 5,
+  prop_factor = 0.01
+)
+
+map_dbscan_clusters(test2_clusters)
+
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
