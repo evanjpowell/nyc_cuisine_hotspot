@@ -300,14 +300,14 @@ eps_settings <- c(
   "Staten Island" = 0.008
 )
 
-boro_test_cuisine = "Middle Eastern"
+boro_test_cuisine = "Asian/Asian Fusion"
 
 test2_clusters <- run_dbscan_by_borough(
   data = restaurants_unique,
   cuisine = boro_test_cuisine,
   eps_values = eps_settings,
   min_floor = 5,
-  prop_factor = 0.01
+  prop_factor = 0.015
 )
 
 map_dbscan_clusters(test2_clusters)
