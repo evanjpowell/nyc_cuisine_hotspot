@@ -19,7 +19,8 @@ library(tigris)
 library(skimr)
 library(RSocrata)
 library(RColorBrewer)
-
+library(dplyr)
+library(rmapshaper)
 ```
 
 ```{r reading nyc data}
@@ -300,7 +301,7 @@ eps_settings <- c(
   "Staten Island" = 0.008
 )
 
-boro_test_cuisine = "Japanese"
+boro_test_cuisine = "Afghan"
 
 test2_clusters <- run_dbscan_by_borough(
   data = restaurants_unique,
@@ -313,3 +314,108 @@ test2_clusters <- run_dbscan_by_borough(
 map_dbscan_clusters(test2_clusters)
 
 ```
+
+## Creating Regions from Clusters
+
+``` {r regions}
+
+# hotspot polygon builder
+make_hotspot_polygons <- function(clustered_data,
+                                  buffer_dist_m = 100,   # widen polygons by this many meters
+                                  smooth = TRUE,         # apply small smoothing (buffer+unbuffer)
+                                  smooth_frac = 0.5,     # smoothing distance as fraction of buffer_dist_m
+                                  proj_crs = 3857) {     # projected CRS for metric ops (Web Mercator)
+  # clustered_data: data.frame/tibble with longitude, latitude, cluster (0 = noise), and any other cols
+  # Returns: sf with polygons in WGS84 (EPSG:4326) and a 'count' column (# restaurants in region)
+  
+  # 1) Make sure we have points and non-zero clusters
+  clustered_sf <- st_as_sf(clustered_data,
+                           coords = c("longitude", "latitude"),
+                           crs = 4326,
+                           remove = FALSE)
+  
+  pts <- clustered_sf %>% filter(!is.na(cluster) & cluster != 0)
+
+  
+  # 2) Build convex hull per DBSCAN cluster (explicit geometry creation inside summarise)
+  hulls <- pts %>%
+    group_by(cluster) %>%
+    summarise(
+      count = n(),
+      geometry = st_convex_hull(st_combine(geometry)),  # make one polygon per cluster
+      .groups = "drop"
+    )
+  
+  # 3) Project to metric CRS for buffering/union
+  hulls_proj <- st_transform(hulls, crs = proj_crs)
+  
+  # 4) Buffer (widen thin shapes)
+  hulls_buffed <- st_buffer(hulls_proj, dist = buffer_dist_m)
+  
+  # 5) Merge overlapping buffered hulls into one or more polygons
+  merged_union <- st_union(hulls_buffed)                 # returns sfc
+  # Cast union result into POLYGONs (may be MULTIPOLYGON -> POLYGON pieces)
+  merged_polys <- st_cast(merged_union, "POLYGON")
+  merged_sf <- st_as_sf(data.frame(id = seq_along(merged_polys)), geometry = merged_polys)
+  st_crs(merged_sf) <- proj_crs
+  
+  # 6) For each merged polygon, compute total counts by summing counts of hulls that intersect it
+  inter_list <- st_intersects(merged_sf, hulls_proj)
+  counts <- sapply(inter_list, function(ix) {
+    if (length(ix) == 0) return(0L)
+    sum(hulls_proj$count[ix], na.rm = TRUE)
+  })
+  merged_sf$count <- counts
+  
+  # 7) Optional smoothing: small positive buffer then negative buffer to round corners
+  if (isTRUE(smooth) && buffer_dist_m > 0) {
+    smooth_dist <- buffer_dist_m * smooth_frac
+    # small positive buffer then negative buffer; do it in projected CRS
+    merged_sf <- st_buffer(merged_sf, smooth_dist)
+    merged_sf <- st_buffer(merged_sf, -smooth_dist)
+    # if buffering removed geometry because polygon too small, keep original in that case
+  }
+  
+  # 8) Transform back to WGS84 for mapping / returning
+  result <- st_transform(merged_sf, crs = 4326)
+  
+  # 9) Add a human-friendly label column (optional)
+  result <- result %>% mutate(label = paste0("hotspot_", id))
+  
+  return(result)
+}
+
+
+  
+map_cluster_polygons <- function(hulls) {
+  
+  if (nrow(hulls) == 0) {
+    print("No hotspot polygons to display.")
+    return(invisible(NULL))
+  }
+  
+  tmap_mode("view")
+  tm_shape(hulls) +
+  tm_polygons(col = "count", palette = "YlOrRd", alpha = 0.5, title = "Restaurants in hotspot") +
+  tm_shape(st_as_sf(hulls, coords = c("longitude","latitude"), crs = 4326)) 
+
+}
+```
+
+``` {r test regions}
+
+region_test_cuisine = "African"
+
+region_test_clusters <- run_dbscan_by_borough(
+  data = restaurants_unique,
+  cuisine = region_test_cuisine,
+  eps_values = eps_settings,
+  min_floor = 5,
+  prop_factor = 0.015
+)
+
+region_test_hulls <- make_hotspot_polygons(region_test_clusters)
+
+map_cluster_polygons(region_test_hulls)
+```
+
