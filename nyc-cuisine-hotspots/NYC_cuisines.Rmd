@@ -279,7 +279,7 @@ run_dbscan_by_borough <- function(data, cuisine, eps_values, min_floor = 3, prop
       mutate(cluster = ifelse(db_result$cluster == 0, 0, db_result$cluster + cluster_offset))
     
     # Update offset for next borough
-    cluster_offset <- max(sub_data$cluster)
+    cluster_offset <- max(max(sub_data$cluster, na.rm = TRUE), cluster_offset)
     
     all_results[[grp]] <- sub_data
   }
@@ -296,11 +296,11 @@ run_dbscan_by_borough <- function(data, cuisine, eps_values, min_floor = 3, prop
 eps_settings <- c(
   "Manhattan" = 0.004,
   "Brooklyn/Queens" = 0.007,
-  "Bronx" = 0.005,
+  "Bronx" = 0.006,
   "Staten Island" = 0.008
 )
 
-boro_test_cuisine = "Asian/Asian Fusion"
+boro_test_cuisine = "Japanese"
 
 test2_clusters <- run_dbscan_by_borough(
   data = restaurants_unique,
