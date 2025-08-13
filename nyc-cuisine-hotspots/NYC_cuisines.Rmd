@@ -1,9 +1,16 @@
 ---
-title: "NYC Cuisine Hotspots"
+title: "Finding NYC Cuisine Hotspots with DBSCAN Clustering"
 author: "Evan Powell"
 date: "2025-08-08"
 output: html_document
 ---
+
+## 1. Abstract
+This project analyzes New York City's restaurant inspection data from the NYC Department of Health and Mental Hygiene (NYDOHMH) to identify cuisine hotspots across the five boroughs. Using DBSCAN clustering, we map regions with a high concentration of specific cuisines and explore how these patterns vary spatially.  
+The results are visualized with interactive maps, providing insights into where New Yorkers and visitors can find culinary clusters across the city.
+
+
+## 2. Setup & Dependencies
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
@@ -23,6 +30,8 @@ library(dplyr)
 library(rmapshaper)
 ```
 
+## 3. Data Acquisition
+
 ```{r reading nyc data}
 #read data from NYC Open Data
 restaurants <- read.socrata(
@@ -40,6 +49,8 @@ saveRDS(restaurants, "restaurants.rds")
 ```{r local retrieve}
 restaurants <- readRDS("restaurants.rds")
 ```
+
+## 4. Data Cleaning
 
 ```{r clean data}
 #Remove columns we don't need
@@ -66,6 +77,10 @@ restaurants_unique <- restaurants %>%
   distinct(camis, .keep_all = TRUE)
 ```
 
+## 5. Helper Functions
+
+### 5.1 Listing Cuisines
+
 ```{r listing cuisines}
 list_cuisines <- function(data) {
   data %>%
@@ -77,7 +92,9 @@ list_cuisines <- function(data) {
 cuisine_counts <- list_cuisines(restaurants_unique)
 ```
 
-## Basic Clustering
+### 5.2 Basic DBSCAN Clustering
+
+Two functions: one for basic DBSCAN, one that runs 'auto' to adjust for varying presences of each cuisine across the city.
 
 ```{r clustering}
 run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
@@ -103,7 +120,7 @@ run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
   return(cuisine_data)
 }
 
-run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.005, min_floor = 3, prop_factor = 0.02) {
+run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.009, min_floor = 3, prop_factor = 0.02) {
  # 1. Filter for the chosen cuisine and remove null island coords
   cuisine_data <- data %>%
     filter(
@@ -145,93 +162,19 @@ run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.005, min_floor = 
 
 ```
 
-
-``` {r mapping}
-map_dbscan_clusters <- function(clustered_data) {
-  
-  clustered_data <- clustered_data %>%
-    filter(latitude != 0, longitude != 0) %>%
-    mutate(cluster = as.factor(cluster))
-  
-  clustered_sf <- st_as_sf(
-    clustered_data,
-    coords = c("longitude", "latitude"),
-    crs = 4326,   # WGS84 lat/long
-    remove = FALSE
-  )
-  
-  # Dynamically create enough colors for the number of clusters
-  num_clusters <- length(unique(clustered_sf$cluster))
-  colors <- brewer.pal(
-    n = max(3, min(12, num_clusters)),  # palettes max out at 12 colors
-    name = "Set1"
-  )
-  
-  tmap_mode("view")  # interactive mode
-  
-  tm_shape(clustered_sf) +
-    tm_dots(
-      col = "cluster",        # color by cluster ID
-      palette = colors,       # distinct colors
-      size = 0.55,            # small points
-      alpha = 0.7,            # semi-transparent
-      title = "Cluster ID"
-    ) +
-    tm_layout(legend.outside = TRUE)
-  
-}
-```
-
-``` {r example Caribbean}
-caribbean_clusters <- run_dbscan_for_cuisine(
-  data = restaurants_unique,
-  cuisine = "Caribbean",
-  eps = 0.0075,  
-  minPts = 5
-)
-
-head(caribbean_clusters)
-
-map_dbscan_clusters(caribbean_clusters)
-```
-
-
-``` {r example Chinese}
-chinese_clusters <- run_dbscan_for_cuisine(
-  data = restaurants_unique,
-  cuisine = "Chinese",
-  eps = 0.005,  
-  minPts = 9
-)
-
-
-map_dbscan_clusters(chinese_clusters)
-```
-
-``` {r example any}
-
-test_cuisine = "Steakhouse"
-
-test_cuisine_clusters <- run_dbscan_for_cuisine_auto(
-  data = restaurants_unique,
-  cuisine = test_cuisine,
-  eps = 0.007,  
-  min_floor = 4,
-  prop_factor = 0.01
-)
-
-
-map_dbscan_clusters(test_cuisine_clusters)
-```
-
-
-## Clustering with Respect to Borough Densities
+### 5.3 Clustering by Borough
 
 ```{r clustering by boro}
-run_dbscan_by_borough <- function(data, cuisine, eps_values, min_floor = 3, prop_factor = 0.02) {
+run_dbscan_by_borough <- function(data, cuisine,
+                                  eps_values= c("Manhattan" = 0.004, 
+                                                "Brooklyn/Queens" = 0.0078, 
+                                                "Bronx" = 0.007, 
+                                                "Staten Island" = 0.008),
+                                  min_floor = 4, 
+                                  prop_factor = 0.015) {
   
   # eps_values = named vector with borough groupings
-  # e.g., c("Manhattan" = 0.0025, "Brooklyn/Queens" = 0.005, "Bronx" = 0.006, "Staten Island" = 0.008)
+  # e.g., c("Manhattan" = 0.004, "Brooklyn/Queens" = 0.007, "Bronx" = 0.006, "Staten Island" = 0.008)
   
   # Filter for chosen cuisine & clean coords
   cuisine_data <- data %>%
@@ -292,30 +235,45 @@ run_dbscan_by_borough <- function(data, cuisine, eps_values, min_floor = 3, prop
 
 ```
 
-```{r example boro any}
+### 5.4 Mapping Results
 
-eps_settings <- c(
-  "Manhattan" = 0.004,
-  "Brooklyn/Queens" = 0.007,
-  "Bronx" = 0.006,
-  "Staten Island" = 0.008
-)
-
-boro_test_cuisine = "Afghan"
-
-test2_clusters <- run_dbscan_by_borough(
-  data = restaurants_unique,
-  cuisine = boro_test_cuisine,
-  eps_values = eps_settings,
-  min_floor = 5,
-  prop_factor = 0.015
-)
-
-map_dbscan_clusters(test2_clusters)
-
+``` {r mapping}
+map_dbscan_clusters <- function(clustered_data) {
+  
+  clustered_data <- clustered_data %>%
+    filter(latitude != 0, longitude != 0) %>%
+    mutate(cluster = as.factor(cluster))
+  
+  clustered_sf <- st_as_sf(
+    clustered_data,
+    coords = c("longitude", "latitude"),
+    crs = 4326,   # WGS84 lat/long
+    remove = FALSE
+  )
+  
+  # Dynamically create enough colors for the number of clusters
+  num_clusters <- length(unique(clustered_sf$cluster))
+  colors <- brewer.pal(
+    n = max(3, min(12, num_clusters)),  # palettes max out at 12 colors
+    name = "Set1"
+  )
+  
+  tmap_mode("view")  # interactive mode
+  
+  tm_shape(clustered_sf) +
+    tm_dots(
+      col = "cluster",        # color by cluster ID
+      palette = colors,       # distinct colors
+      size = 0.55,            # small points
+      alpha = 0.7,            # semi-transparent
+      title = "Cluster ID"
+    ) +
+    tm_layout(legend.outside = TRUE)
+  
+}
 ```
 
-## Creating Regions from Clusters
+### 5.5 Polygon "Region" Creation
 
 ``` {r regions}
 
@@ -385,8 +343,11 @@ make_hotspot_polygons <- function(clustered_data,
   return(result)
 }
 
-
+```
   
+  Another mapping function is needed for the regions:
+  
+``` {r mapping regions}  
 map_cluster_polygons <- function(hulls) {
   
   if (nrow(hulls) == 0) {
@@ -402,9 +363,51 @@ map_cluster_polygons <- function(hulls) {
 }
 ```
 
+## 6. Example Analyses
+
+### 6.1 Sample without Borough-level clustering
+``` {r example Caribbean}
+caribbean_clusters <- run_dbscan_for_cuisine_auto(
+  data = restaurants_unique,
+  cuisine = "Caribbean",
+)
+
+# head(caribbean_clusters)
+
+map_dbscan_clusters(caribbean_clusters)
+```
+
+### 6.2 Sample with Borough-level clustering
+
+
+```{r example boro any}
+
+eps_settings <- c(
+  "Manhattan" = 0.004,
+  "Brooklyn/Queens" = 0.008,
+  "Bronx" = 0.007,
+  "Staten Island" = 0.009
+)
+
+boro_test_cuisine = "Latin American"
+
+test2_clusters <- run_dbscan_by_borough(
+  data = restaurants_unique,
+  cuisine = boro_test_cuisine,
+  eps_values = eps_settings,
+  min_floor = 5,
+  prop_factor = 0.015
+)
+
+map_dbscan_clusters(test2_clusters)
+
+```
+
+### 6.3 Sample of Polygon Regions
+
 ``` {r test regions}
 
-region_test_cuisine = "African"
+region_test_cuisine = "Chinese"
 
 region_test_clusters <- run_dbscan_by_borough(
   data = restaurants_unique,
