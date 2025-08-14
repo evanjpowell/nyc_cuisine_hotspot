@@ -12,6 +12,17 @@ The results are visualized with interactive maps, providing insights into where 
 
 ## 2. Setup & Dependencies
 
+This section loads all required R packages for data handling, spatial analysis, clustering, and visualization.  
+By loading them here, we ensure that the rest of the analysis runs smoothly without needing repeated `library()` calls in later chunks.  
+Packages are grouped by purpose:
+- **Data wrangling & cleaning:** `tidyverse`, `janitor`, `dplyr`, `skimr`, `purrr`  
+- **Spatial data handling:** `sf`, `tigris`, `tidycensus`  
+- **Clustering:** `dbscan`  
+- **Mapping:** `tmap`, `leaflet`, `RColorBrewer`, `rmapshaper`  
+- **Data acquisition:** `RSocrata` (to pull data from NYC Open Data)  
+We also disable message and warning output to keep the knitted report clean and readable.
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 # Load packages
@@ -28,9 +39,16 @@ library(RSocrata)
 library(RColorBrewer)
 library(dplyr)
 library(rmapshaper)
+library(purrr)
 ```
 
 ## 3. Data Acquisition
+
+Here we retrieve the NYC restaurant inspection dataset from the NYC Open Data API.  
+We use **RSocrata** to connect directly to the API, authenticating with a token and credentials stored in environment variables to keep sensitive information private.  
+
+The data is saved locally as an `.rds` file so we can reload it instantly without having to re-download from the API every time we run the analysis. 
+
 
 ```{r reading nyc data}
 #read data from NYC Open Data
@@ -51,6 +69,20 @@ restaurants <- readRDS("restaurants.rds")
 ```
 
 ## 4. Data Cleaning
+
+The raw dataset contains many columns we don’t need for our clustering analysis, so we first keep only:
+- `camis` (unique restaurant ID)
+- `dba` (restaurant name)
+- `boro` (borough name)
+- `cuisine_description` (type of cuisine served)
+- `latitude` / `longitude` (restaurant location)
+
+We then:
+1. Convert latitude and longitude from strings to numeric values.
+2. Remove rows without valid coordinates or a cuisine description.
+3. Deduplicate by `camis` to ensure each restaurant appears only once (since the raw data has one row per inspection, not per restaurant).
+
+The cleaned dataset, `restaurants_unique`, is now ready for analysis.
 
 ```{r clean data}
 #Remove columns we don't need
@@ -81,6 +113,12 @@ restaurants_unique <- restaurants %>%
 
 ### 5.1 Listing Cuisines
 
+This function generates a sorted list of all cuisine types in the dataset along with the number of unique restaurants serving each cuisine.  
+It’s useful for:
+- Understanding the diversity of cuisines in NYC.
+- Selecting which cuisines to run clustering on (e.g., choosing only those with enough restaurants to form meaningful clusters).
+
+
 ```{r listing cuisines}
 list_cuisines <- function(data) {
   data %>%
@@ -94,7 +132,9 @@ cuisine_counts <- list_cuisines(restaurants_unique)
 
 ### 5.2 Basic DBSCAN Clustering
 
-Two functions: one for basic DBSCAN, one that runs 'auto' to adjust for varying presences of each cuisine across the city.
+These functions runs the **DBSCAN** clustering algorithm on the restaurants of a chosen cuisine. It uses the same parameters across the entire city.
+
+There are functions: one for basic DBSCAN, one that runs 'auto' to adjust for varying presences of each cuisine across the city. This is done by modifying `minPts`, the number of points needed to form a cluster, i.e., the number of restaurants needed to be considered a hotspot of that cuisine. 
 
 ```{r clustering}
 run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
@@ -163,6 +203,17 @@ run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.009, min_floor = 
 ```
 
 ### 5.3 Clustering by Borough
+
+This function runs the **DBSCAN** clustering algorithm on restaurants serving a chosen cuisine.  
+Because restaurant density varies greatly by borough (e.g., Manhattan vs. Staten Island), we run DBSCAN separately for different borough groupings with customized `eps` values.
+
+Key points:
+- `eps` controls the maximum distance between points to be considered part of the same cluster.
+- `minPts` is set dynamically based on the total number of restaurants for the cuisine — this ensures that common cuisines need more restaurants to form a hotspot, while rarer cuisines can form clusters with fewer points.
+- We offset cluster IDs by borough so clusters remain uniquely identifiable.
+
+The output is a dataframe of restaurants with an assigned cluster ID (or noise label `0`).
+
 
 ```{r clustering by boro}
 run_dbscan_by_borough <- function(data, cuisine,
@@ -237,6 +288,8 @@ run_dbscan_by_borough <- function(data, cuisine,
 
 ### 5.4 Mapping Results
 
+This function maps the results of the DBSCAN clustering for one cuisine, with each cluster assigned a unique color for readability.
+
 ``` {r mapping}
 map_dbscan_clusters <- function(clustered_data) {
   
@@ -274,6 +327,18 @@ map_dbscan_clusters <- function(clustered_data) {
 ```
 
 ### 5.5 Polygon "Region" Creation
+
+This function converts DBSCAN point clusters into geographic hotspot regions.  
+
+Steps:
+1. **Filter** out noise points (cluster `0`).
+2. **Group** restaurants by cluster ID.
+3. **Create convex hulls** (minimum polygons that enclose each cluster’s points).
+4. **Merge overlapping hulls** to handle non-radial clusters split into multiple shapes.
+5. **Smooth or buffer** polygons so they look more like real neighborhood shapes (wider than a single street line).
+
+The result is an `sf` object where each polygon represents a cuisine hotspot, with an attribute for the number of restaurants in it.
+
 
 ``` {r regions}
 
@@ -345,7 +410,16 @@ make_hotspot_polygons <- function(clustered_data,
 
 ```
   
-  Another mapping function is needed for the regions:
+### 5.6 Mapping the Regions
+
+This function takes the hotspot polygons and maps them using `tmap` in interactive view mode.  
+
+Features:
+- Polygons are colored based on the number of restaurants (`count`), using a sequential color palette.
+- If no polygons are provided (e.g., the cuisine has no clusters), the function prints a message and returns nothing — preventing errors in the report.
+
+This provides an at-a-glance visualization of where in NYC a cuisine is most concentrated.
+
   
 ``` {r mapping regions}  
 map_cluster_polygons <- function(hulls) {
@@ -364,6 +438,8 @@ map_cluster_polygons <- function(hulls) {
 ```
 
 ## 6. Example Analyses
+
+Below is a demonstration of clustering without respect to Borough density differences and one with respect to density differences. Following this is a demonstration of the region creation for one cuisine. 
 
 ### 6.1 Sample without Borough-level clustering
 ``` {r example Caribbean}
@@ -389,9 +465,9 @@ eps_settings <- c(
   "Staten Island" = 0.009
 )
 
-boro_test_cuisine = "Latin American"
+boro_test_cuisine <- "Latin American"
 
-test2_clusters <- run_dbscan_by_borough(
+boro_test_clusters <- run_dbscan_by_borough(
   data = restaurants_unique,
   cuisine = boro_test_cuisine,
   eps_values = eps_settings,
@@ -399,26 +475,141 @@ test2_clusters <- run_dbscan_by_borough(
   prop_factor = 0.015
 )
 
-map_dbscan_clusters(test2_clusters)
+map_dbscan_clusters(boro_test_clusters)
 
 ```
 
 ### 6.3 Sample of Polygon Regions
 
-``` {r test regions}
+Below are example cuisine hotspots for Chinese Food (of which several large hotspots are present), and African Food (despite being repsenting a very broad region, the hostpots formed have comparatively fewer restaurants).
 
-region_test_cuisine = "Chinese"
+``` {r test region 1}
 
-region_test_clusters <- run_dbscan_by_borough(
+region_test1_cuisine <- "Chinese"
+
+region_test1_clusters <- run_dbscan_by_borough(
   data = restaurants_unique,
-  cuisine = region_test_cuisine,
+  cuisine = region_test1_cuisine,
   eps_values = eps_settings,
-  min_floor = 5,
   prop_factor = 0.015
 )
 
-region_test_hulls <- make_hotspot_polygons(region_test_clusters)
+region_test1_hulls <- make_hotspot_polygons(region_test1_clusters)
 
-map_cluster_polygons(region_test_hulls)
+map_cluster_polygons(region_test1_hulls)
+```
+
+``` {r test region 2}
+
+region_test2_cuisine <- "African"
+
+region_test2_clusters <- run_dbscan_by_borough(
+  data = restaurants_unique,
+  cuisine = region_test2_cuisine,
+  eps_values = eps_settings,
+  prop_factor = 0.015
+)
+
+region_test2_hulls <- make_hotspot_polygons(region_test2_clusters)
+
+map_cluster_polygons(region_test2_hulls)
+```
+
+Having applied the clustering and mapping workflow to multiple cuisines, we can now step back and compare results across different food types.  
+By looking at both common and rare cuisines, we see how hotspot patterns shift depending on restaurant density, borough-specific geography, and the choice of DBSCAN parameters.  
+The next section distills these observations into key insights, highlighting spatial trends, surprising patterns, and possible socioeconomic connections that emerged from the analysis.
+
+
+## 7. Insights
+
+Using this data, we can observe that different cuisines for different cluster patterns, with some cuisines being strongly represented in a small number of hotspots, others spread across multiple hostpots, and others still having many restaurants not in hotspots.
+
+Here, we calculate how concentrated each cuisine is in clusters, using entropy to weigh a distribution with fewer, larger, clusters as more concentrated. To create a 'Diffusion Score' from entropy, we choose the case where no clusters / hotspots appear at 1, even though an entropy calculation might suggest that all restaurants belong to the same bin (noise).
+
+``` {r Cuisine Clustering Score}
+
+calc_cluster_concentration <- function(clustered_data) {
+  # Keep all rows with a cluster label (0 = noise)
+  df <- clustered_data %>% filter(!is.na(cluster))
+  N  <- nrow(df)
+  if (N == 0) {
+    return(tibble(
+      pct_in_clusters       = 0,
+      largest_cluster_share = 0,
+      diffusion_score       = 1,
+      n_clusters            = 0,
+      pct_noise             = 1
+    ))
+  }
+
+  # Counts
+  noise_n <- sum(df$cluster == 0, na.rm = TRUE)
+  clust_tbl <- df %>% filter(cluster != 0) %>% count(cluster, name = "ggg")
+  n_clusters <- nrow(clust_tbl)
+
+  # Metrics
+  pct_in_clusters <- (N - noise_n) / N
+  largest_cluster_share <- if (n_clusters > 0) max(clust_tbl$n) / N else 0
+
+  # Proportions including noise as its own bin
+  props <- c(clust_tbl$n, if (noise_n > 0) noise_n else NULL) / N
+
+  # Shannon entropy (normalized). If only one non-empty bin, define as 0.
+  H  <- -sum(props * log(props))
+  m  <- length(props)
+  Hn <- if (m <= 1) 0 else H / log(m)
+
+  tibble(
+    pct_in_clusters       = pct_in_clusters,
+    largest_cluster_share = largest_cluster_share,
+    diffusion_score       = Hn,
+    n_clusters            = n_clusters,
+    pct_noise             = noise_n / N
+  )
+}
+
+```
+
+The following code block can be used as an example to get the scores of a single cuisine:
+
+```{r cluster ingsight example}
+
+conc_score_cuisine <- "Italian"
+
+conc_clusters <- run_dbscan_by_borough(
+  data = restaurants_unique,
+  cuisine = conc_score_cuisine,
+)
+
+map_dbscan_clusters(conc_clusters)
+
+calc_cluster_concentration(conc_clusters)
+
+
+```
+
+We can use the following code to get the scores of every listed cuisine:
+
+``` {r diffusion of each cuisine}
+
+get_cuisine_diffusion_score <- function(resto_data){
+  cuisine_list <- list_cuisines(resto_data)$cuisine_description
+  cuisine_diff_scores <- data.frame()
+  
+  map_dfr(cuisine_list, function(cui){
+    this_clustering <- run_dbscan_by_borough(data=resto_data, cuisine=cui)
+    this_scorecard <- calc_cluster_concentration(this_clustering)
+    
+    bind_cols(data.frame(cuisine = cui, stringsAsFactors = FALSE), this_scorecard)
+  })
+  
+  return(cuisine_diff_scores)
+  
+}
+
+cuisine_diffusion_scores <- get_cuisine_diffusion_score(restaurants_unique)
+
+print(cuisine_diffusion_scores)
+
 ```
 
