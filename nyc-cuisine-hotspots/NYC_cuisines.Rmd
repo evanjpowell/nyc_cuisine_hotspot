@@ -41,6 +41,10 @@ library(dplyr)
 library(rmapshaper)
 library(purrr)
 library(kableExtra)
+library(tidyr)
+library(FactoMineR)
+library(factoextra)
+library(Rtsne)
 ```
 
 ## 3. Data Acquisition
@@ -91,7 +95,7 @@ restaurants <- restaurants %>%
   select(camis, dba, boro, cuisine_description, latitude, longitude)
 
 #Make numeric the Lat / Long.
-restaurants <- restaurants %>%
+restaurants <- restaurants %>% 
   mutate(
     latitude = as.numeric(latitude),
     longitude = as.numeric(longitude)
@@ -109,6 +113,8 @@ restaurants <- restaurants %>%
 restaurants_unique <- restaurants %>%
   distinct(camis, .keep_all = TRUE)
 ```
+
+The resulting dataset gives us one row per restaurant, suitable for geospatial clustering.
 
 ## 5. Helper Functions
 
@@ -129,11 +135,16 @@ list_cuisines <- function(data) {
 }
 
 cuisine_counts <- list_cuisines(restaurants_unique)
+
+kable(cuisine_counts, caption = "No. Restaurants by Cuisine", format = "html")
+
 ```
+
+As expected, categories such as American, Chinese, and Pizza are among the most common, while more specialized cuisines appear only rarely.
 
 ### 5.2 Basic DBSCAN Clustering
 
-These functions runs the **DBSCAN** clustering algorithm on the restaurants of a chosen cuisine. It uses the same parameters across the entire city.
+To identify hotspots of a given cuisine, we apply DBSCAN, a density-based clustering algorithm well-suited for geographic data. Unlike k-means, DBSCAN does not require specifying the number of clusters in advance and can flexibly separate dense neighborhoods from background noise.
 
 There are functions: one for basic DBSCAN, one that runs 'auto' to adjust for varying presences of each cuisine across the city. This is done by modifying `minPts`, the number of points needed to form a cluster, i.e., the number of restaurants needed to be considered a hotspot of that cuisine. 
 
@@ -202,6 +213,8 @@ run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.009, min_floor = 
 }
 
 ```
+
+Each restaurant is assigned either to a cluster (positive ID) or to noise (ID 0). The results highlight natural concentrations of restaurants without imposing artificial boundaries.
 
 ### 5.3 Clustering by Borough
 
@@ -289,7 +302,7 @@ run_dbscan_by_borough <- function(data, cuisine,
 
 ### 5.4 Mapping Results
 
-This function maps the results of the DBSCAN clustering for one cuisine, with each cluster assigned a unique color for readability.
+To visualize the results, we map the clusters using `tmap`. Each cluster is displayed in a distinct color, enabling us to see where restaurants of a given cuisine naturally group together across the city.
 
 ``` {r mapping}
 map_dbscan_clusters <- function(clustered_data) {
@@ -329,7 +342,7 @@ map_dbscan_clusters <- function(clustered_data) {
 
 ### 5.5 Polygon "Region" Creation
 
-This function converts DBSCAN point clusters into geographic hotspot regions.  
+To move beyond individual points, we create polygon boundaries around clusters. These polygons represent cuisine “hotspot regions” that summarize where in the city a cuisine is most concentrated.
 
 Steps:
 1. **Filter** out noise points (cluster `0`).
@@ -411,6 +424,8 @@ make_hotspot_polygons <- function(clustered_data,
 
 ```
   
+This higher-level view makes it easier to identify neighborhoods associated with particular cuisines, such as Italian restaurants in Little Italy or Greek restaurants in Astoria.  
+  
 ### 5.6 Mapping the Regions
 
 This function takes the hotspot polygons and maps them using `tmap` in interactive view mode.  
@@ -480,6 +495,8 @@ map_dbscan_clusters(boro_test_clusters)
 
 ```
 
+The visualization allows us to adjust parameters such as eps and minPts interactively, striking a balance between capturing meaningful neighborhoods and filtering out noise.
+
 ### 6.3 Sample of Polygon Regions
 
 Below are example cuisine hotspots for Chinese Food (of which several large hotspots are present), and African Food (despite being repsenting a very broad region, the hostpots formed have comparatively fewer restaurants).
@@ -527,7 +544,9 @@ Using this data, we can observe that different cuisines for different cluster pa
 
 ### 7.1 Geographically Diffuse and Concentrated Cuisines
 
-Here, we calculate how concentrated each cuisine is in clusters, using entropy to weigh a distribution with fewer, larger, clusters as more concentrated. To create a 'Diffusion Score' from entropy, we choose the case where no clusters / hotspots appear at 1, even though an entropy calculation might suggest that all restaurants belong to the same bin (noise).
+To quantify the degree of clustering, we calculate several metrics: the share of restaurants in clusters, the share in the largest cluster, the "diffusion score", and the proportion of noise points.
+
+We calculate diffuson score (how concentrated each cuisine is in clusters), using entropy to weigh a distribution with fewer, larger, clusters as more concentrated. To create a 'Diffusion Score' from entropy, we choose the case where no clusters / hotspots appear at 1, even though an entropy calculation might suggest that all restaurants belong to the same bin (noise).
 
 ``` {r Cuisine Clustering Score}
 
@@ -642,8 +661,3 @@ print_cuisine_diff_scores(cuisine_diffusion_scores)
 In the table created, we can see that Polish, Egyptian, and Russian cuisine (as well as Hotdog / Pretzel establishments) are the least diffuse throughout the five boroughs (i.e, these cuisines are the most concentrated in one or a few areas). These are the cuisines most likely to found in one or two distinct hotspots in the city, and less likely to be found in any other neighborhood.
 A large number of cuisines score as being very diffuse, though for many of these cuisines, few restaurants chose to be labelled as such. Here, the data is sparse and strong conclusions about the distribution of these restaurants cannot be made. 
 In contrast to the sparse data case, a number of very well represented categories find themselves near the bottom of the list. Many of these labels do not map clearly to a specific cuisine, with categories such as 'Chicken', 'Juice, Smoothies, Fruit Salads', and 'Donuts' making up three of the bottom five non-zero spots. 
-
-### 7.2 Co-Clustering Cuisines
-
-
-
