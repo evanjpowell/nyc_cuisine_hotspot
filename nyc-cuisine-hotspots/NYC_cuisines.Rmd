@@ -40,6 +40,7 @@ library(RColorBrewer)
 library(dplyr)
 library(rmapshaper)
 library(purrr)
+library(kableExtra)
 ```
 
 ## 3. Data Acquisition
@@ -47,7 +48,7 @@ library(purrr)
 Here we retrieve the NYC restaurant inspection dataset from the NYC Open Data API.  
 We use **RSocrata** to connect directly to the API, authenticating with a token and credentials stored in environment variables to keep sensitive information private.  
 
-The data is saved locally as an `.rds` file so we can reload it instantly without having to re-download from the API every time we run the analysis. 
+The data is saved locally as an `.rds` file so we can reload it instantly without having to re-download from the API every time we run the analysis (which will require an app token).
 
 
 ```{r reading nyc data}
@@ -524,6 +525,8 @@ The next section distills these observations into key insights, highlighting spa
 
 Using this data, we can observe that different cuisines for different cluster patterns, with some cuisines being strongly represented in a small number of hotspots, others spread across multiple hostpots, and others still having many restaurants not in hotspots.
 
+### 7.1 Geographically Diffuse and Concentrated Cuisines
+
 Here, we calculate how concentrated each cuisine is in clusters, using entropy to weigh a distribution with fewer, larger, clusters as more concentrated. To create a 'Diffusion Score' from entropy, we choose the case where no clusters / hotspots appear at 1, even though an entropy calculation might suggest that all restaurants belong to the same bin (noise).
 
 ``` {r Cuisine Clustering Score}
@@ -544,7 +547,7 @@ calc_cluster_concentration <- function(clustered_data) {
 
   # Counts
   noise_n <- sum(df$cluster == 0, na.rm = TRUE)
-  clust_tbl <- df %>% filter(cluster != 0) %>% count(cluster, name = "ggg")
+  clust_tbl <- df %>% filter(cluster != 0) %>% count(cluster, name = "n")
   n_clusters <- nrow(clust_tbl)
 
   # Metrics
@@ -603,13 +606,44 @@ get_cuisine_diffusion_score <- function(resto_data){
     bind_cols(data.frame(cuisine = cui, stringsAsFactors = FALSE), this_scorecard)
   })
   
-  return(cuisine_diff_scores)
-  
+}
+
+print_cuisine_diff_scores <- function(cuisine_diffusion_scores){
+
+  cuisine_diffusion_scores %>%
+    arrange(desc(diffusion_score)) %>%   # or desc(), depending on what you want
+    rename(
+      "Cuisine"             = cuisine,
+      "% in clusters"       = pct_in_clusters,
+      "% in largest cluster"= largest_cluster_share,
+      "Diffusion Score"     = diffusion_score,
+      "No. Clusters"        = n_clusters,
+      "% noise"             = pct_noise
+    ) %>%
+    mutate(
+      # scale diffusion score from light to dark for highlighting
+      `Diffusion Score` = cell_spec(round(`Diffusion Score`, 3), "html",
+                                  bold = TRUE,
+                                  color = ifelse(`Diffusion Score` > 0.5, "black", "white"),
+                                  background = spec_color(`Diffusion Score`, end = 0.9))
+    ) %>%
+  kable("html", escape = FALSE, caption = "Cuisines ordered by diffusion score (a higher score is less diffuse)") %>%
+  kable_styling(full_width = FALSE, position = "center")
+
 }
 
 cuisine_diffusion_scores <- get_cuisine_diffusion_score(restaurants_unique)
 
-print(cuisine_diffusion_scores)
+print_cuisine_diff_scores(cuisine_diffusion_scores)
+
 
 ```
+
+In the table created, we can see that Polish, Egyptian, and Russian cuisine (as well as Hotdog / Pretzel establishments) are the least diffuse throughout the five boroughs (i.e, these cuisines are the most concentrated in one or a few areas). These are the cuisines most likely to found in one or two distinct hotspots in the city, and less likely to be found in any other neighborhood.
+A large number of cuisines score as being very diffuse, though for many of these cuisines, few restaurants chose to be labelled as such. Here, the data is sparse and strong conclusions about the distribution of these restaurants cannot be made. 
+In contrast to the sparse data case, a number of very well represented categories find themselves near the bottom of the list. Many of these labels do not map clearly to a specific cuisine, with categories such as 'Chicken', 'Juice, Smoothies, Fruit Salads', and 'Donuts' making up three of the bottom five non-zero spots. 
+
+### 7.2 Co-Clustering Cuisines
+
+
 
