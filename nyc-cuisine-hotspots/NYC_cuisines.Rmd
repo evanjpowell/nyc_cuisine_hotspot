@@ -6,8 +6,12 @@ output: html_document
 ---
 
 ## 1. Abstract
-This project analyzes New York City's restaurant inspection data from the NYC Department of Health and Mental Hygiene (NYDOHMH) to identify cuisine hotspots across the five boroughs. Using DBSCAN clustering, we map regions with a high concentration of specific cuisines and explore how these patterns vary spatially.  
-The results are visualized with interactive maps, providing insights into where New Yorkers and visitors can find culinary clusters across the city.
+
+This project analyzes the geographic distribution of cuisines in New York City using data from the NYC Department of Health and Mental Hygiene’s restaurant inspection dataset. Each restaurant is classified by cuisine type and geocoded by latitude and longitude, enabling a spatial exploration of food diversity across the five boroughs.
+
+To identify neighborhoods with a high density of specific cuisines, we apply DBSCAN, a density-based clustering algorithm that automatically detects hotspots without requiring a predefined number of clusters. These clusters are then visualized using geospatial mapping, and further summarized into polygon “hotspot regions” that represent cuisine neighborhoods at a glance.
+
+In addition to visualization, we calculate quantitative measures of concentration and diffusion, including the share of restaurants in clusters, the size of the largest cluster, and a normalized entropy-based diffusion score. These metrics allow us to compare cuisines analytically — distinguishing those tied to specific neighborhoods (e.g., Italian in Little Italy, Greek in Astoria) from those widely available throughout the city (e.g., American diners, pizza). Together, these methods demonstrate how geospatial clustering and exploratory data science techniques can uncover meaningful patterns in cultural and economic life, illustration in this project the diversity of cuisine available in New York.
 
 
 ## 2. Setup & Dependencies
@@ -115,6 +119,8 @@ restaurants_unique <- restaurants %>%
 ```
 
 The resulting dataset gives us one row per restaurant, suitable for geospatial clustering.
+
+Note on cleaned data: while we can remove duplicate restaurants and isolate the relevant columns, issues persist with the cuisine labeling of the data. There is no consistent standards to determine the label: restaurants themselves select these; and several categories are subcategories of others (e.g., 'Peruvain' and 'Latin American' or 'Thai' and 'Southeast Asian')
 
 ## 5. Helper Functions
 
@@ -608,6 +614,7 @@ map_dbscan_clusters(conc_clusters)
 calc_cluster_concentration(conc_clusters)
 
 
+
 ```
 
 We can use the following code to get the scores of every listed cuisine:
@@ -661,3 +668,7 @@ print_cuisine_diff_scores(cuisine_diffusion_scores)
 In the table created, we can see that Polish, Egyptian, and Russian cuisine (as well as Hotdog / Pretzel establishments) are the least diffuse throughout the five boroughs (i.e, these cuisines are the most concentrated in one or a few areas). These are the cuisines most likely to found in one or two distinct hotspots in the city, and less likely to be found in any other neighborhood.
 A large number of cuisines score as being very diffuse, though for many of these cuisines, few restaurants chose to be labelled as such. Here, the data is sparse and strong conclusions about the distribution of these restaurants cannot be made. 
 In contrast to the sparse data case, a number of very well represented categories find themselves near the bottom of the list. Many of these labels do not map clearly to a specific cuisine, with categories such as 'Chicken', 'Juice, Smoothies, Fruit Salads', and 'Donuts' making up three of the bottom five non-zero spots. 
+
+## 8. Conclusion
+
+
