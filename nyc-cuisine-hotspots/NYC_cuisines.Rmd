@@ -152,10 +152,28 @@ As expected, categories such as American, Chinese, and Pizza are among the most 
 
 To identify hotspots of a given cuisine, we apply DBSCAN, a density-based clustering algorithm well-suited for geographic data. Unlike k-means, DBSCAN does not require specifying the number of clusters in advance and can flexibly separate dense neighborhoods from background noise.
 
-There are functions: one for basic DBSCAN, one that runs 'auto' to adjust for varying presences of each cuisine across the city. This is done by modifying `minPts`, the number of points needed to form a cluster, i.e., the number of restaurants needed to be considered a hotspot of that cuisine. 
+**Important: Coordinate Projection**
+
+A critical detail for spatial clustering is that raw latitude/longitude coordinates (WGS84) distort distances. At NYC's latitude (~40.7°N):
+- 1° latitude ≈ 111 km (constant everywhere)
+- 1° longitude ≈ 85 km (shrinks toward poles: 111 × cos(40.7°))
+
+If we ran DBSCAN on raw lat/long, the `eps` parameter would have different meanings for north-south vs. east-west distances — creating elliptical neighborhoods instead of circular ones.
+
+To fix this, we **project** coordinates to EPSG:2263 (New York State Plane, Long Island), a local coordinate system designed for NYC that uses feet as its unit. After converting to meters, our `eps` parameter represents true distance: `eps = 500` means 500 meters in all directions.
+
+There are two functions: one for basic DBSCAN, one that runs 'auto' to adjust for varying presences of each cuisine across the city. This is done by modifying `minPts`, the number of points needed to form a cluster, i.e., the number of restaurants needed to be considered a hotspot of that cuisine. 
 
 ```{r clustering}
-run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
+# Define the projected CRS for NYC (State Plane Long Island, feet)
+# We'll use EPSG:2263 and convert feet to meters for DBSCAN
+NYC_CRS <- 2263  # New York State Plane (Long Island), units = US survey feet
+FEET_TO_METERS <- 0.3048006096  # conversion factor
+
+run_dbscan_for_cuisine <- function(data, cuisine, eps = 500, minPts = 5) {
+  # NOTE: eps is now in METERS, not degrees!
+  # eps = 500 means "restaurants within 500 meters are neighbors"
+  
  # 1. Filter for the chosen cuisine and remove null island coords
   cuisine_data <- data %>%
     filter(
@@ -165,20 +183,38 @@ run_dbscan_for_cuisine <- function(data, cuisine, eps = 0.005, minPts = 5) {
       latitude != 0,
       longitude != 0
     )
- # 2. Prepare coordinates matrix
-  coords <- cuisine_data %>%
-    select(longitude, latitude) %>%
-    as.matrix()
-  # 3. Run DBSCAN
-  db_result <- dbscan::dbscan(coords, eps = eps, minPts = minPts)
-  # 4. Add cluster assignments back to data
+ 
+  # 2. Convert to sf object with WGS84 (lat/long) coordinates
+  cuisine_sf <- st_as_sf(
+    cuisine_data,
+    coords = c("longitude", "latitude"),
+    crs = 4326,        # WGS84 = raw lat/long
+    remove = FALSE     # keep original lat/long columns for later mapping
+  )
+  
+  # 3. Project to NYC State Plane (EPSG:2263) for accurate distance calculations
+  #    This CRS uses feet, so we extract coordinates and convert to meters
+  cuisine_projected <- st_transform(cuisine_sf, crs = NYC_CRS)
+  
+  # 4. Extract projected coordinates (in feet) and convert to meters
+  proj_coords <- st_coordinates(cuisine_projected)  # returns X, Y in feet
+
+  proj_coords_meters <- proj_coords * FEET_TO_METERS  # now in meters
+  
+  # 5. Run DBSCAN on projected coordinates
+  #    Now eps = 500 truly means 500 meters in ALL directions (no distortion)
+  db_result <- dbscan::dbscan(proj_coords_meters, eps = eps, minPts = minPts)
+  
+  # 6. Add cluster assignments back to original data (with lat/long intact)
   cuisine_data <- cuisine_data %>%
     mutate(cluster = db_result$cluster)
   
   return(cuisine_data)
 }
 
-run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.009, min_floor = 3, prop_factor = 0.02) {
+run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 750, min_floor = 3, prop_factor = 0.02) {
+  # NOTE: eps is now in METERS, not degrees!
+  
  # 1. Filter for the chosen cuisine and remove null island coords
   cuisine_data <- data %>%
     filter(
@@ -197,20 +233,30 @@ run_dbscan_for_cuisine_auto <- function(data, cuisine, eps = 0.009, min_floor = 
   
   # 2. Calculate minPts dynamically
   minPts <- max(min_floor, round(total_count * prop_factor))
-    
- # 3. Prepare coordinates matrix
-  coords <- cuisine_data %>%
-    select(longitude, latitude) %>%
-    as.matrix()
-  # 3. Run DBSCAN
-  db_result <- dbscan::dbscan(coords, eps = eps, minPts = minPts)
-  # 5. Add cluster assignments back to data
+  
+  # 3. Convert to sf and project to NYC State Plane for accurate distances
+  cuisine_sf <- st_as_sf(
+    cuisine_data,
+    coords = c("longitude", "latitude"),
+    crs = 4326,
+    remove = FALSE
+  )
+  cuisine_projected <- st_transform(cuisine_sf, crs = NYC_CRS)
+  
+  # 4. Extract coordinates in meters
+  proj_coords <- st_coordinates(cuisine_projected) * FEET_TO_METERS
+  
+  # 5. Run DBSCAN with eps in meters
+  db_result <- dbscan::dbscan(proj_coords, eps = eps, minPts = minPts)
+  
+  # 6. Add cluster assignments back to data
   cuisine_data <- cuisine_data %>%
     mutate(cluster = db_result$cluster)
   
-  # Attach settings used
+  # Attach settings used (documenting that eps is in meters)
   attr(cuisine_data, "dbscan_params") <- list(
     eps = eps,
+    eps_unit = "meters",
     minPts = minPts,
     total_count = total_count
   )
@@ -237,15 +283,18 @@ The output is a dataframe of restaurants with an assigned cluster ID (or noise l
 
 ```{r clustering by boro}
 run_dbscan_by_borough <- function(data, cuisine,
-                                  eps_values= c("Manhattan" = 0.004, 
-                                                "Brooklyn/Queens" = 0.0078, 
-                                                "Bronx" = 0.007, 
-                                                "Staten Island" = 0.008),
+                                  eps_values = c("Manhattan" = 350, 
+                                                "Brooklyn/Queens" = 650, 
+                                                "Bronx" = 600, 
+                                                "Staten Island" = 700),
                                   min_floor = 4, 
                                   prop_factor = 0.015) {
-  
-  # eps_values = named vector with borough groupings
-  # e.g., c("Manhattan" = 0.004, "Brooklyn/Queens" = 0.007, "Bronx" = 0.006, "Staten Island" = 0.008)
+  # NOTE: eps_values are now in METERS, not degrees!
+  # Previous defaults (in degrees) have been converted:
+  #   Manhattan:       0.004 deg ≈ 350 m
+  #   Brooklyn/Queens: 0.0078 deg ≈ 650 m
+  #   Bronx:           0.007 deg ≈ 600 m  
+  #   Staten Island:   0.008 deg ≈ 700 m
   
   # Filter for chosen cuisine & clean coords
   cuisine_data <- data %>%
@@ -277,17 +326,26 @@ run_dbscan_by_borough <- function(data, cuisine,
   # Loop through each borough group
   for (grp in unique(cuisine_data$boro_group)) {
     eps <- eps_values[[grp]]
+    if (is.null(eps)) eps <- 500  # default fallback for "Other"
     
     sub_data <- cuisine_data %>% filter(boro_group == grp)
     
     if (nrow(sub_data) == 0) next
     
+    # Convert to sf and project to NYC State Plane
+    sub_sf <- st_as_sf(
+      sub_data,
+      coords = c("longitude", "latitude"),
+      crs = 4326,
+      remove = FALSE
+    )
+    sub_projected <- st_transform(sub_sf, crs = NYC_CRS)
     
-    coords <- sub_data %>%
-      select(longitude, latitude) %>%
-      as.matrix()
+    # Extract coordinates in meters
+    proj_coords <- st_coordinates(sub_projected) * FEET_TO_METERS
     
-    db_result <- dbscan::dbscan(coords, eps = eps, minPts = minPts)
+    # Run DBSCAN with eps in meters
+    db_result <- dbscan::dbscan(proj_coords, eps = eps, minPts = minPts)
     
     # Offset cluster IDs so they are unique across boroughs
     sub_data <- sub_data %>%
@@ -300,6 +358,14 @@ run_dbscan_by_borough <- function(data, cuisine,
   }
   
   final_data <- bind_rows(all_results)
+  
+  # Attach parameters for reference
+  attr(final_data, "dbscan_params") <- list(
+    eps_values = eps_values,
+    eps_unit = "meters",
+    minPts = minPts,
+    total_count = total_count
+  )
   
   return(final_data)
 }
@@ -333,15 +399,19 @@ map_dbscan_clusters <- function(clustered_data) {
   
   tmap_mode("view")  # interactive mode
   
+  # tmap v4 syntax:
+  # - col → fill for fill color
+  # - palette → fill.scale with tm_scale_categorical()
+  # - title → fill.legend with tm_legend()
+  # - alpha moved to fill_alpha
   tm_shape(clustered_sf) +
     tm_dots(
-      col = "cluster",        # color by cluster ID
-      palette = colors,       # distinct colors
-      size = 0.55,            # small points
-      alpha = 0.7,            # semi-transparent
-      title = "Cluster ID"
-    ) +
-    tm_layout(legend.outside = TRUE)
+      fill = "cluster",
+      fill.scale = tm_scale_categorical(values = colors),
+      fill.legend = tm_legend(title = "Cluster ID"),
+      size = 0.55,
+      fill_alpha = 0.7
+    )
   
 }
 ```
@@ -452,9 +522,19 @@ map_cluster_polygons <- function(hulls) {
   }
   
   tmap_mode("view")
+  
+  # tmap v4 syntax:
+  # - col → fill
+  # - palette → fill.scale with tm_scale_continuous()
+  # - alpha → fill_alpha
+  # - title → fill.legend with tm_legend()
   tm_shape(hulls) +
-  tm_polygons(col = "count", palette = "YlOrRd", alpha = 0.5, title = "Restaurants in hotspot") +
-  tm_shape(st_as_sf(hulls, coords = c("longitude","latitude"), crs = 4326)) 
+    tm_polygons(
+      fill = "count",
+      fill.scale = tm_scale_continuous(values = "YlOrRd"),
+      fill.legend = tm_legend(title = "Restaurants in hotspot"),
+      fill_alpha = 0.5
+    )
 
 }
 ```
@@ -480,11 +560,13 @@ map_dbscan_clusters(caribbean_clusters)
 
 ```{r example boro any}
 
+# eps values are now in METERS (previously were in degrees)
+# These values define the neighborhood radius for each borough group
 eps_settings <- c(
-  "Manhattan" = 0.004,
-  "Brooklyn/Queens" = 0.008,
-  "Bronx" = 0.007,
-  "Staten Island" = 0.009
+  "Manhattan" = 350,        # tighter clusters in dense Manhattan
+  "Brooklyn/Queens" = 650,  # slightly wider in outer boroughs
+  "Bronx" = 600,
+  "Staten Island" = 700     # widest for least dense borough
 )
 
 boro_test_cuisine <- "Latin American"
@@ -511,10 +593,10 @@ Below are example cuisine hotspots for Chinese Food (of which several large hots
 
 region_test1_cuisine <- "Chinese"
 
+# Using meter-based eps values (function defaults are already in meters)
 region_test1_clusters <- run_dbscan_by_borough(
   data = restaurants_unique,
   cuisine = region_test1_cuisine,
-  eps_values = eps_settings,
   prop_factor = 0.015
 )
 
@@ -527,10 +609,10 @@ map_cluster_polygons(region_test1_hulls)
 
 region_test2_cuisine <- "African"
 
+# Using meter-based eps values (function defaults are already in meters)
 region_test2_clusters <- run_dbscan_by_borough(
   data = restaurants_unique,
   cuisine = region_test2_cuisine,
-  eps_values = eps_settings,
   prop_factor = 0.015
 )
 
