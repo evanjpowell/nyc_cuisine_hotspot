@@ -1,0 +1,170 @@
+// Leaflet map setup and layer management
+
+// Color palette matching R's brewer.pal("Set1") for cluster dots
+const CLUSTER_COLORS = [
+  "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
+  "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5",
+  "#FC8D62", "#8DA0CB"
+];
+
+const NOISE_COLOR = "#AAAAAA";
+const NOISE_OPACITY = 0.3;
+const CLUSTER_OPACITY = 0.7;
+const DOT_RADIUS = 5;
+
+// YlOrRd color scale for polygon fill (matching R's sequential palette)
+const POLYGON_COLORS = [
+  "#FFFFB2", "#FED976", "#FEB24C", "#FD8D3C",
+  "#FC4E2A", "#E31A1C", "#B10026"
+];
+const POLYGON_OPACITY = 0.5;
+
+let map;
+let dotsLayer = null;
+let polygonLayer = null;
+let showDots = true;
+let showPolygons = true;
+
+/**
+ * Initialize the Leaflet map.
+ */
+function initMap() {
+  map = L.map("map", {
+    center: [40.7128, -73.96],
+    zoom: 11,
+    zoomControl: true
+  });
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(map);
+}
+
+/**
+ * Get a color for a cluster ID.
+ */
+function getClusterColor(clusterId) {
+  if (clusterId === 0) return NOISE_COLOR;
+  return CLUSTER_COLORS[(clusterId - 1) % CLUSTER_COLORS.length];
+}
+
+/**
+ * Interpolate into the YlOrRd palette based on a 0-1 value.
+ */
+function getPolygonColor(value) {
+  const idx = Math.min(
+    Math.floor(value * POLYGON_COLORS.length),
+    POLYGON_COLORS.length - 1
+  );
+  return POLYGON_COLORS[idx];
+}
+
+/**
+ * Update the dots layer on the map.
+ * @param {Object[]} restaurants - Clustered restaurant data with cluster, la, lo, n fields
+ */
+function updateDotsLayer(restaurants) {
+  if (dotsLayer) {
+    map.removeLayer(dotsLayer);
+    dotsLayer = null;
+  }
+
+  const markers = [];
+  for (const r of restaurants) {
+    const color = getClusterColor(r.cluster);
+    const opacity = r.cluster === 0 ? NOISE_OPACITY : CLUSTER_OPACITY;
+    const marker = L.circleMarker([r.la, r.lo], {
+      radius: DOT_RADIUS,
+      fillColor: color,
+      fillOpacity: opacity,
+      color: color,
+      weight: 0.5,
+      opacity: opacity
+    });
+    const label = r.cluster === 0 ? "Noise" : `Cluster ${r.cluster}`;
+    marker.bindPopup(`<strong>${r.n}</strong><br>${label}`);
+    markers.push(marker);
+  }
+
+  dotsLayer = L.layerGroup(markers);
+  if (showDots) {
+    dotsLayer.addTo(map);
+  }
+}
+
+/**
+ * Update the polygon layer on the map.
+ * @param {Object} geojson - GeoJSON FeatureCollection of hotspot polygons
+ */
+function updatePolygonLayer(geojson) {
+  if (polygonLayer) {
+    map.removeLayer(polygonLayer);
+    polygonLayer = null;
+  }
+
+  if (!geojson || !geojson.features || geojson.features.length === 0) return;
+
+  // Find max count for color scaling
+  const maxCount = Math.max(...geojson.features.map(f => f.properties.count || 0));
+
+  polygonLayer = L.geoJSON(geojson, {
+    style: function (feature) {
+      const count = feature.properties.count || 0;
+      const normalized = maxCount > 0 ? count / maxCount : 0;
+      return {
+        fillColor: getPolygonColor(normalized),
+        fillOpacity: POLYGON_OPACITY,
+        color: "#E31A1C",
+        weight: 1.5,
+        opacity: 0.7
+      };
+    },
+    onEachFeature: function (feature, layer) {
+      const count = feature.properties.count || 0;
+      layer.bindPopup(`<strong>Hotspot Region</strong><br>${count} restaurants`);
+    }
+  });
+
+  if (showPolygons) {
+    polygonLayer.addTo(map);
+  }
+}
+
+/**
+ * Fit the map view to show all restaurants.
+ */
+function fitMapToData(restaurants) {
+  if (restaurants.length === 0) return;
+  const bounds = L.latLngBounds(restaurants.map(r => [r.la, r.lo]));
+  map.fitBounds(bounds, { padding: [30, 30] });
+}
+
+/**
+ * Toggle dots layer visibility.
+ */
+function toggleDots(visible) {
+  showDots = visible;
+  if (dotsLayer) {
+    if (visible) {
+      dotsLayer.addTo(map);
+    } else {
+      map.removeLayer(dotsLayer);
+    }
+  }
+}
+
+/**
+ * Toggle polygon layer visibility.
+ */
+function togglePolygons(visible) {
+  showPolygons = visible;
+  if (polygonLayer) {
+    if (visible) {
+      polygonLayer.addTo(map);
+    } else {
+      map.removeLayer(polygonLayer);
+    }
+  }
+}

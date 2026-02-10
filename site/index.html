@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NYC Cuisine Hotspots</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Sidebar controls -->
+  <div id="sidebar">
+    <h1>NYC Cuisine Hotspots</h1>
+    <p class="subtitle">DBSCAN clustering of NYC restaurant data</p>
+
+    <div class="control-group">
+      <label for="cuisine-select">Cuisine</label>
+      <select id="cuisine-select">
+        <option value="" disabled selected>Loading cuisines...</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>Parameter Multiplier</label>
+      <div class="slider-row">
+        <input type="range" id="multiplier-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
+        <span id="multiplier-value">1.0x</span>
+      </div>
+      <div class="slider-labels">
+        <span>0.5x (tighter)</span>
+        <span>2.0x (looser)</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Layers</label>
+      <div class="toggle-row">
+        <label><input type="checkbox" id="toggle-dots" checked /> Restaurant dots</label>
+        <label><input type="checkbox" id="toggle-polygons" checked /> Hotspot regions</label>
+      </div>
+    </div>
+
+    <div class="info-panel">
+      <h3>Cluster Info</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Restaurants: </span>
+          <span class="info-value" id="info-total">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Clusters: </span>
+          <span class="info-value" id="info-clusters">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">minPts: </span>
+          <span class="info-value" id="info-minpts">-</span>
+        </div>
+        <div class="info-item full-width">
+          <span class="info-label">eps: </span>
+          <span class="info-value" id="info-eps">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="about-text">
+      Clusters are found using DBSCAN with borough-specific distance thresholds
+      (tighter in Manhattan, wider in outer boroughs). The multiplier slider
+      scales both the neighborhood radius (eps) and the minimum restaurant count
+      (minPts) simultaneously. Data from the
+      <a href="https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j" target="_blank" rel="noopener">
+        NYC DOHMH Restaurant Inspection Results</a>.
+    </div>
+  </div>
+
+  <!-- Map area -->
+  <div id="map-container">
+    <div id="map"></div>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      Computing clusters...
+    </div>
+
+    <div id="error-msg"></div>
+  </div>
+
+  <!-- Dependencies (CDN) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+
+  <!-- App modules (order matters: dependencies first) -->
+  <script src="js/projection.js"></script>
+  <script src="js/dbscan.js"></script>
+  <script src="js/clustering.js"></script>
+  <script src="js/polygons.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

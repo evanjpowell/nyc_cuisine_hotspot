@@ -1,0 +1,246 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  color: #333;
+}
+
+/* Sidebar */
+#sidebar {
+  width: 320px;
+  min-width: 320px;
+  background: #fafafa;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+#sidebar h1 {
+  font-size: 1.15rem;
+  padding: 16px 16px 4px;
+  color: #222;
+  line-height: 1.3;
+}
+
+#sidebar .subtitle {
+  font-size: 0.8rem;
+  color: #777;
+  padding: 0 16px 12px;
+}
+
+.control-group {
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+}
+
+.control-group label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+#cuisine-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* Slider */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#multiplier-slider {
+  flex: 1;
+  cursor: pointer;
+  accent-color: #E41A1C;
+}
+
+#multiplier-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #E41A1C;
+  min-width: 40px;
+  text-align: right;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #999;
+  margin-top: 2px;
+}
+
+/* Toggle checkboxes */
+.toggle-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.toggle-row label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #444;
+  cursor: pointer;
+}
+
+.toggle-row input[type="checkbox"] {
+  accent-color: #E41A1C;
+  cursor: pointer;
+}
+
+/* Info panel */
+.info-panel {
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+}
+
+.info-panel h3 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.info-item {
+  font-size: 0.82rem;
+}
+
+.info-item .info-label {
+  color: #888;
+}
+
+.info-item .info-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+/* About section */
+.about-text {
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+  font-size: 0.78rem;
+  color: #888;
+  line-height: 1.5;
+  margin-top: auto;
+}
+
+.about-text a {
+  color: #377EB8;
+}
+
+/* Map container */
+#map-container {
+  flex: 1;
+  position: relative;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Loading overlay */
+#loading {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.7);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #ddd;
+  border-top-color: #E41A1C;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error message */
+#error-msg {
+  display: none;
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #E31A1C;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  z-index: 3000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive: stack on narrow screens */
+@media (max-width: 700px) {
+  body {
+    flex-direction: column;
+  }
+
+  #sidebar {
+    width: 100%;
+    min-width: auto;
+    max-height: 45vh;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+
+  #map-container {
+    flex: 1;
+    min-height: 55vh;
+  }
+}
