@@ -102,15 +102,33 @@ function makeHotspotPolygons(clusteredRestaurants) {
     }
   }
 
-  // 6. Count restaurants per merged polygon
-  const allPoints = clustered.map(r => turf.point([r.lo, r.la]));
-  const allPointsFc = turf.featureCollection(allPoints);
+  // 6. Count restaurants per merged polygon and determine dominant cluster
+  const allPointsWithCluster = clustered.map(r => {
+    const pt = turf.point([r.lo, r.la]);
+    pt.properties = { cluster: r.cluster };
+    return pt;
+  });
+  const allPointsFc = turf.featureCollection(allPointsWithCluster);
 
   const features = smoothed.map((poly, i) => {
     let count;
+    let dominantCluster = poly.properties?.clusterId || 1;
     try {
       const within = turf.pointsWithinPolygon(allPointsFc, poly);
       count = within.features.length;
+      // Find which cluster has the most points in this polygon
+      const clusterCounts = {};
+      for (const pt of within.features) {
+        const cid = pt.properties.cluster;
+        clusterCounts[cid] = (clusterCounts[cid] || 0) + 1;
+      }
+      let maxCount = 0;
+      for (const [cid, cnt] of Object.entries(clusterCounts)) {
+        if (cnt > maxCount) {
+          maxCount = cnt;
+          dominantCluster = parseInt(cid);
+        }
+      }
     } catch (e) {
       count = poly.properties?.count || 0;
     }
@@ -118,7 +136,8 @@ function makeHotspotPolygons(clusteredRestaurants) {
       ...poly,
       properties: {
         id: i + 1,
-        count: count
+        count: count,
+        clusterId: dominantCluster
       }
     };
   });

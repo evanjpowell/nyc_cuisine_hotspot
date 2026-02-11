@@ -83,7 +83,7 @@ function updateDotsLayer(restaurants) {
       weight: 0.5,
       opacity: opacity
     });
-    const label = r.cluster === 0 ? "Noise" : `Cluster ${r.cluster}`;
+    const label = r.cluster === 0 ? "Not in a cluster" : `Cluster ${r.cluster}`;
     marker.bindPopup(`<strong>${r.n}</strong><br>${label}`);
     markers.push(marker);
   }
@@ -95,6 +95,41 @@ function updateDotsLayer(restaurants) {
 }
 
 /**
+ * Get the style for a polygon feature based on current layer visibility.
+ * When both dots and polygons are visible, use cluster colors to match dots.
+ * When only polygons are visible, use the YlOrRd heat scale by restaurant count.
+ */
+function getPolygonStyle(feature, maxCount) {
+  const count = feature.properties.count || 0;
+  const clusterId = feature.properties.clusterId || 1;
+
+  if (showDots) {
+    // Match cluster dot colors
+    const clusterColor = getClusterColor(clusterId);
+    return {
+      fillColor: clusterColor,
+      fillOpacity: POLYGON_OPACITY,
+      color: clusterColor,
+      weight: 1.5,
+      opacity: 0.7
+    };
+  } else {
+    // Heat-map style by restaurant count
+    const normalized = maxCount > 0 ? count / maxCount : 0;
+    return {
+      fillColor: getPolygonColor(normalized),
+      fillOpacity: POLYGON_OPACITY,
+      color: "#E31A1C",
+      weight: 1.5,
+      opacity: 0.7
+    };
+  }
+}
+
+/** Cached geojson for re-styling when toggling layers */
+let currentPolygonGeojson = null;
+
+/**
  * Update the polygon layer on the map.
  * @param {Object} geojson - GeoJSON FeatureCollection of hotspot polygons
  */
@@ -104,6 +139,8 @@ function updatePolygonLayer(geojson) {
     polygonLayer = null;
   }
 
+  currentPolygonGeojson = geojson;
+
   if (!geojson || !geojson.features || geojson.features.length === 0) return;
 
   // Find max count for color scaling
@@ -111,15 +148,7 @@ function updatePolygonLayer(geojson) {
 
   polygonLayer = L.geoJSON(geojson, {
     style: function (feature) {
-      const count = feature.properties.count || 0;
-      const normalized = maxCount > 0 ? count / maxCount : 0;
-      return {
-        fillColor: getPolygonColor(normalized),
-        fillOpacity: POLYGON_OPACITY,
-        color: "#E31A1C",
-        weight: 1.5,
-        opacity: 0.7
-      };
+      return getPolygonStyle(feature, maxCount);
     },
     onEachFeature: function (feature, layer) {
       const count = feature.properties.count || 0;
@@ -130,6 +159,19 @@ function updatePolygonLayer(geojson) {
   if (showPolygons) {
     polygonLayer.addTo(map);
   }
+}
+
+/**
+ * Re-style polygon layer (e.g. when dot visibility changes).
+ */
+function restylePolygons() {
+  if (!polygonLayer || !currentPolygonGeojson) return;
+  const maxCount = Math.max(...currentPolygonGeojson.features.map(f => f.properties.count || 0));
+  polygonLayer.eachLayer(function (layer) {
+    if (layer.feature) {
+      layer.setStyle(getPolygonStyle(layer.feature, maxCount));
+    }
+  });
 }
 
 /**
@@ -153,6 +195,8 @@ function toggleDots(visible) {
       map.removeLayer(dotsLayer);
     }
   }
+  // Re-style polygons since their color depends on whether dots are visible
+  restylePolygons();
 }
 
 /**
