@@ -102,10 +102,10 @@ function makeHotspotPolygons(clusteredRestaurants) {
     }
   }
 
-  // 6. Count restaurants per merged polygon and determine dominant cluster
+  // 6. Count restaurants per merged polygon and determine dominant cluster + NTA
   const allPointsWithCluster = clustered.map(r => {
     const pt = turf.point([r.lo, r.la]);
-    pt.properties = { cluster: r.cluster };
+    pt.properties = { cluster: r.cluster, ntaName: r.ntaName || null };
     return pt;
   });
   const allPointsFc = turf.featureCollection(allPointsWithCluster);
@@ -113,6 +113,7 @@ function makeHotspotPolygons(clusteredRestaurants) {
   const features = smoothed.map((poly, i) => {
     let count;
     let dominantCluster = poly.properties?.clusterId || 1;
+    let ntaName = null;
     try {
       const within = turf.pointsWithinPolygon(allPointsFc, poly);
       count = within.features.length;
@@ -129,6 +130,13 @@ function makeHotspotPolygons(clusteredRestaurants) {
           dominantCluster = parseInt(cid);
         }
       }
+      // Get NTA name from a member of the dominant cluster
+      for (const pt of within.features) {
+        if (pt.properties.cluster === dominantCluster && pt.properties.ntaName) {
+          ntaName = pt.properties.ntaName;
+          break;
+        }
+      }
     } catch (e) {
       count = poly.properties?.count || 0;
     }
@@ -137,7 +145,8 @@ function makeHotspotPolygons(clusteredRestaurants) {
       properties: {
         id: i + 1,
         count: count,
-        clusterId: dominantCluster
+        clusterId: dominantCluster,
+        ntaName: ntaName
       }
     };
   });

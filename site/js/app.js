@@ -14,14 +14,17 @@ async function init() {
   showLoading(true);
 
   try {
-    // Load both data files in parallel
-    const [cuisineRes, restaurantRes] = await Promise.all([
+    // Load all data files in parallel
+    const [cuisineRes, restaurantRes, ntaRes] = await Promise.all([
       fetch("data/cuisines.json"),
-      fetch("data/restaurants.json")
+      fetch("data/restaurants.json"),
+      fetch("data/nta.geojson")
     ]);
 
     cuisineList = await cuisineRes.json();
     allRestaurants = await restaurantRes.json();
+    const ntaData = await ntaRes.json();
+    loadNTAData(ntaData);
 
     // Populate the cuisine dropdown
     const select = document.getElementById("cuisine-select");
@@ -123,6 +126,9 @@ function runPipeline() {
 
         // 2. Run borough-aware DBSCAN
         const { restaurants: clustered, params } = runBoroughClustering(cuisineData, currentEpsMultiplier, currentMinPtsMultiplier);
+
+        // 2b. Assign NTA neighborhood names to clusters
+        assignNTANames(clustered);
 
         // 3. Generate hotspot polygons
         const polygons = makeHotspotPolygons(clustered);

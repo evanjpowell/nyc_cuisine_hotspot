@@ -83,7 +83,12 @@ function updateDotsLayer(restaurants) {
       weight: 0.5,
       opacity: opacity
     });
-    const label = r.cluster === 0 ? "Not in a cluster" : `Cluster ${r.cluster}`;
+    let label;
+    if (r.cluster === 0) {
+      label = "Not in a cluster";
+    } else {
+      label = r.ntaName ? `Cluster ${r.cluster} (${r.ntaName})` : `Cluster ${r.cluster}`;
+    }
     marker.bindPopup(`<strong>${r.n}</strong><br>${label}`);
     markers.push(marker);
   }
@@ -152,7 +157,9 @@ function updatePolygonLayer(geojson) {
     },
     onEachFeature: function (feature, layer) {
       const count = feature.properties.count || 0;
-      layer.bindPopup(`<strong>Hotspot Region</strong><br>${count} restaurants`);
+      const ntaName = feature.properties.ntaName;
+      const title = ntaName ? `Hotspot — ${ntaName}` : "Hotspot Region";
+      layer.bindPopup(`<strong>${title}</strong><br>${count} restaurants`);
     }
   });
 
