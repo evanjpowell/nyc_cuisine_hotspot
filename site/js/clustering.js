@@ -25,13 +25,14 @@ function getBoroughGroup(boro) {
  * Run borough-aware DBSCAN on restaurants of a single cuisine.
  *
  * @param {Object[]} restaurants - Array of restaurant objects with fields: lo, la, b (boro), n (name), c (camis)
- * @param {number} multiplier - Slider multiplier for eps and minPts (1.0 = defaults)
+ * @param {number} epsMultiplier - Slider multiplier for eps (1.0 = defaults)
+ * @param {number} minPtsMultiplier - Slider multiplier for minPts (1.0 = defaults)
  * @returns {{ restaurants: Object[], params: Object }} Restaurants with `cluster` field added, plus params info
  */
-function runBoroughClustering(restaurants, multiplier) {
+function runBoroughClustering(restaurants, epsMultiplier, minPtsMultiplier) {
   const totalCount = restaurants.length;
   const baseMinPts = Math.max(MIN_FLOOR, Math.round(totalCount * PROP_FACTOR));
-  const adjustedMinPts = Math.max(MIN_FLOOR, Math.round(baseMinPts * multiplier));
+  const adjustedMinPts = Math.max(MIN_FLOOR, Math.round(baseMinPts * minPtsMultiplier));
 
   // Group restaurants by borough
   const groups = {};
@@ -47,7 +48,7 @@ function runBoroughClustering(restaurants, multiplier) {
   for (const grp of Object.keys(groups)) {
     const subset = groups[grp];
     const baseEps = BASE_EPS[grp] || 500; // fallback for "Other"
-    const eps = baseEps * multiplier;
+    const eps = baseEps * epsMultiplier;
 
     // Project all points to meters
     const projected = subset.map(r => projectToMeters(r.lo, r.la));
@@ -83,10 +84,11 @@ function runBoroughClustering(restaurants, multiplier) {
       totalCount,
       baseMinPts,
       adjustedMinPts,
-      multiplier,
+      epsMultiplier,
+      minPtsMultiplier,
       numClusters: clusterIds.size,
       epsValues: Object.fromEntries(
-        Object.entries(BASE_EPS).map(([k, v]) => [k, Math.round(v * multiplier)])
+        Object.entries(BASE_EPS).map(([k, v]) => [k, Math.round(v * epsMultiplier)])
       )
     }
   };

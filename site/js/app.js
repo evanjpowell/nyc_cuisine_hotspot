@@ -3,7 +3,8 @@
 let allRestaurants = [];
 let cuisineList = [];
 let currentCuisine = null;
-let currentMultiplier = 1.0;
+let currentEpsMultiplier = 1.0;
+let currentMinPtsMultiplier = 1.0;
 let debounceTimer = null;
 
 /**
@@ -38,8 +39,8 @@ async function init() {
     // Set up event listeners
     select.addEventListener("change", onCuisineChange);
 
-    const slider = document.getElementById("multiplier-slider");
-    slider.addEventListener("input", onSliderInput);
+    document.getElementById("eps-slider").addEventListener("input", onEpsSliderInput);
+    document.getElementById("minpts-slider").addEventListener("input", onMinPtsSliderInput);
 
     document.getElementById("toggle-dots").addEventListener("change", function () {
       toggleDots(this.checked);
@@ -72,12 +73,24 @@ function onCuisineChange() {
 }
 
 /**
- * Handle slider input (debounced).
+ * Handle eps slider input (debounced).
  */
-function onSliderInput() {
-  const slider = document.getElementById("multiplier-slider");
-  currentMultiplier = parseFloat(slider.value);
-  document.getElementById("multiplier-value").textContent = currentMultiplier.toFixed(1) + "x";
+function onEpsSliderInput() {
+  currentEpsMultiplier = parseFloat(document.getElementById("eps-slider").value);
+  document.getElementById("eps-value").textContent = currentEpsMultiplier.toFixed(1) + "x";
+
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    runPipeline();
+  }, 300);
+}
+
+/**
+ * Handle minPts slider input (debounced).
+ */
+function onMinPtsSliderInput() {
+  currentMinPtsMultiplier = parseFloat(document.getElementById("minpts-slider").value);
+  document.getElementById("minpts-value").textContent = currentMinPtsMultiplier.toFixed(1) + "x";
 
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
@@ -109,7 +122,7 @@ function runPipeline() {
         }
 
         // 2. Run borough-aware DBSCAN
-        const { restaurants: clustered, params } = runBoroughClustering(cuisineData, currentMultiplier);
+        const { restaurants: clustered, params } = runBoroughClustering(cuisineData, currentEpsMultiplier, currentMinPtsMultiplier);
 
         // 3. Generate hotspot polygons
         const polygons = makeHotspotPolygons(clustered);

@@ -69,13 +69,15 @@ body {
   gap: 10px;
 }
 
-#multiplier-slider {
+#eps-slider,
+#minpts-slider {
   flex: 1;
   cursor: pointer;
   accent-color: #E41A1C;
 }
 
-#multiplier-value {
+#eps-value,
+#minpts-value {
   font-size: 0.95rem;
   font-weight: 700;
   color: #E41A1C;

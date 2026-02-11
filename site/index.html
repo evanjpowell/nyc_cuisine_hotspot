@@ -26,14 +26,26 @@
     </div>
 
     <div class="control-group">
-      <label>Parameter Multiplier</label>
+      <label>Eps Multiplier</label>
       <div class="slider-row">
-        <input type="range" id="multiplier-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
-        <span id="multiplier-value">1.0x</span>
+        <input type="range" id="eps-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
+        <span id="eps-value">1.0x</span>
       </div>
       <div class="slider-labels">
         <span>0.5x (tighter)</span>
         <span>2.0x (looser)</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>MinPts Multiplier</label>
+      <div class="slider-row">
+        <input type="range" id="minpts-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
+        <span id="minpts-value">1.0x</span>
+      </div>
+      <div class="slider-labels">
+        <span>0.5x (fewer)</span>
+        <span>2.0x (more)</span>
       </div>
     </div>
 
@@ -69,9 +81,9 @@
 
     <div class="about-text">
       Clusters are found using DBSCAN with borough-specific distance thresholds
-      (tighter in Manhattan, wider in outer boroughs). The multiplier slider
-      scales both the neighborhood radius (eps) and the minimum restaurant count
-      (minPts) simultaneously. Data from the
+      (tighter in Manhattan, wider in outer boroughs). The eps multiplier scales
+      the neighborhood radius, while the minPts multiplier scales the minimum
+      restaurant count required to form a cluster. Data from the
       <a href="https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j" target="_blank" rel="noopener">
         NYC DOHMH Restaurant Inspection Results</a>.
     </div>
