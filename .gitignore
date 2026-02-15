@@ -1,3 +1,4 @@
 .env
 .Rproj.user
 .Renviron
+.DS_store
