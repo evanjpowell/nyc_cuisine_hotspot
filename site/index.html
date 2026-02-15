@@ -19,10 +19,16 @@
     <p class="subtitle">DBSCAN clustering of NYC restaurant data</p>
 
     <div class="control-group">
-      <label for="cuisine-select">Cuisine</label>
-      <select id="cuisine-select">
-        <option value="" disabled selected>Loading cuisines...</option>
-      </select>
+      <label>Cuisine</label>
+      <div id="cuisine-dropdown" class="multi-select">
+        <div id="cuisine-toggle" class="multi-select-toggle">Loading cuisines...</div>
+        <div id="cuisine-menu" class="multi-select-menu">
+          <div class="multi-select-search">
+            <input type="text" id="cuisine-search" placeholder="Search cuisines..." />
+          </div>
+          <div id="cuisine-options" class="multi-select-options"></div>
+        </div>
+      </div>
     </div>
 
     <div class="control-group">
@@ -83,7 +89,10 @@
       Clusters are found using DBSCAN with borough-specific distance thresholds
       (tighter in Manhattan, wider in outer boroughs). The eps multiplier scales
       the neighborhood radius, while the minPts multiplier scales the minimum
-      restaurant count required to form a cluster. Data from the
+      restaurant count required to form a cluster.
+      <a href="#" id="analysis-link">Which cuisines cluster the most?</a>
+      <br><br>
+      Data from the
       <a href="https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j" target="_blank" rel="noopener">
         NYC DOHMH Restaurant Inspection Results</a>.
     </div>
@@ -101,6 +110,43 @@
     <div id="error-msg"></div>
   </div>
 
+  <!-- Analysis modal -->
+  <div id="analysis-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Clustering vs. Diffusion by Cuisine</h2>
+        <button id="analysis-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-intro">
+          How concentrated or diffuse is each cuisine across NYC? Using the same
+          DBSCAN parameters as the map, this table shows what share of each cuisine's
+          restaurants fall into clusters versus remaining unclustered. The
+          <strong>diffusion score</strong> uses normalized Shannon entropy &mdash;
+          lower values indicate a cuisine concentrated in a few hotspots (e.g., Polish
+          in Greenpoint), while higher values indicate even spread across many clusters
+          and noise (e.g., American diners everywhere).
+        </p>
+        <div id="analysis-status" class="analysis-status">Click a column header to sort.</div>
+        <div class="analysis-table-wrap">
+          <table id="analysis-table">
+            <thead>
+              <tr>
+                <th data-col="cuisine">Cuisine</th>
+                <th data-col="count"># Restaurants</th>
+                <th data-col="pctClustered">% Clustered</th>
+                <th data-col="nClusters"># Clusters</th>
+                <th data-col="largestShare">Largest Cluster %</th>
+                <th data-col="diffusion">Diffusion Score</th>
+              </tr>
+            </thead>
+            <tbody id="analysis-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Dependencies (CDN) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
@@ -112,6 +158,8 @@
   <script src="js/clustering.js"></script>
   <script src="js/polygons.js"></script>
   <script src="js/map.js"></script>
+  <script src="js/nta.js"></script>
+  <script src="js/analysis.js"></script>
   <script src="js/app.js"></script>
 
 </body>
