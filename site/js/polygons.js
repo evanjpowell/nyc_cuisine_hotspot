@@ -1,21 +1,23 @@
-// Polygon generation — replicates make_hotspot_polygons() from R code
-// Uses Turf.js for convex hull, buffer, union operations
+// Polygon generation — one polygon per DBSCAN cluster (no merging)
+// Uses Turf.js for convex hull and buffer operations
 
 const BUFFER_DIST_KM = 0.1;      // 100 meters in km
 const SMOOTH_FRAC = 0.5;          // smoothing distance as fraction of buffer
 
 /**
  * Build hotspot polygons from clustered restaurant data.
- * Steps (matching R code):
+ * Each cluster gets its own polygon (no union/merging), preserving DBSCAN's
+ * arbitrary-shape groupings even when clusters overlap.
+ *
+ * Steps:
  *   1. Filter out noise (cluster === 0)
  *   2. Convex hull per cluster
  *   3. Buffer by 100m
- *   4. Union overlapping polygons
- *   5. Smooth (buffer + un-buffer)
- *   6. Count restaurants per merged polygon
+ *   4. Smooth (buffer + un-buffer)
+ *   5. Attach count, clusterId, ntaName
  *
  * @param {Object[]} clusteredRestaurants - Restaurants with `cluster`, `la`, `lo` fields
- * @returns {Object} GeoJSON FeatureCollection of hotspot polygons with `count` property
+ * @returns {Object} GeoJSON FeatureCollection of hotspot polygons
  */
 function makeHotspotPolygons(clusteredRestaurants) {
   // 1. Filter to clustered points only (exclude noise)
@@ -31,160 +33,62 @@ function makeHotspotPolygons(clusteredRestaurants) {
     clusterGroups[r.cluster].push(r);
   }
 
-  // 2. Create convex hull per cluster
-  const bufferedHulls = [];
+  const smoothDist = BUFFER_DIST_KM * SMOOTH_FRAC;
+  const features = [];
+
   for (const [clusterId, members] of Object.entries(clusterGroups)) {
     const points = members.map(r => turf.point([r.lo, r.la]));
     const fc = turf.featureCollection(points);
 
+    // 2. Create convex hull
     let hull;
     if (members.length === 1) {
-      // Single point: just use the point itself (buffer will make it a circle)
       hull = points[0];
     } else if (members.length === 2) {
-      // Two points: create a line, buffer will make it a capsule
       hull = turf.lineString(members.map(r => [r.lo, r.la]));
     } else {
       hull = turf.convex(fc);
       if (!hull) {
-        // Collinear points: fall back to line
         hull = turf.lineString(members.map(r => [r.lo, r.la]));
       }
     }
 
     // 3. Buffer by 100m
+    let poly;
     try {
-      const buffered = turf.buffer(hull, BUFFER_DIST_KM, { units: "kilometers" });
-      if (buffered) {
-        buffered.properties = { clusterId: parseInt(clusterId), count: members.length };
-        bufferedHulls.push(buffered);
-      }
+      poly = turf.buffer(hull, BUFFER_DIST_KM, { units: "kilometers" });
+      if (!poly) continue;
     } catch (e) {
-      // Skip clusters that fail to buffer
       console.warn("Buffer failed for cluster", clusterId, e);
+      continue;
     }
-  }
 
-  if (bufferedHulls.length === 0) {
-    return turf.featureCollection([]);
-  }
-
-  // 4. Union overlapping polygons
-  let merged;
-  try {
-    merged = unionPolygons(bufferedHulls);
-  } catch (e) {
-    console.warn("Union failed, using individual polygons:", e);
-    merged = bufferedHulls;
-  }
-
-  // 5. Smooth: small positive buffer then negative buffer to round corners
-  // Note: negative buffer may not be supported in all Turf versions,
-  // so we fall back gracefully to just the positive buffer or the original polygon.
-  const smoothDist = BUFFER_DIST_KM * SMOOTH_FRAC;
-  const smoothed = [];
-  for (const poly of merged) {
+    // 4. Smooth: small positive buffer then negative buffer to round corners
     try {
       const expanded = turf.buffer(poly, smoothDist, { units: "kilometers" });
-      if (!expanded) {
-        smoothed.push(poly);
-        continue;
-      }
-      try {
-        const contracted = turf.buffer(expanded, -smoothDist, { units: "kilometers" });
-        smoothed.push(contracted || expanded);
-      } catch (e2) {
-        // Negative buffer not supported or failed — use expanded version
-        smoothed.push(expanded);
-      }
-    } catch (e) {
-      smoothed.push(poly);
-    }
-  }
-
-  // 6. Count restaurants per merged polygon and determine dominant cluster + NTA
-  const allPointsWithCluster = clustered.map(r => {
-    const pt = turf.point([r.lo, r.la]);
-    pt.properties = { cluster: r.cluster, ntaName: r.ntaName || null };
-    return pt;
-  });
-  const allPointsFc = turf.featureCollection(allPointsWithCluster);
-
-  const features = smoothed.map((poly, i) => {
-    let count;
-    let dominantCluster = poly.properties?.clusterId || 1;
-    let ntaName = null;
-    try {
-      const within = turf.pointsWithinPolygon(allPointsFc, poly);
-      count = within.features.length;
-      // Find which cluster has the most points in this polygon
-      const clusterCounts = {};
-      for (const pt of within.features) {
-        const cid = pt.properties.cluster;
-        clusterCounts[cid] = (clusterCounts[cid] || 0) + 1;
-      }
-      let maxCount = 0;
-      for (const [cid, cnt] of Object.entries(clusterCounts)) {
-        if (cnt > maxCount) {
-          maxCount = cnt;
-          dominantCluster = parseInt(cid);
-        }
-      }
-      // Get NTA name from a member of the dominant cluster
-      for (const pt of within.features) {
-        if (pt.properties.cluster === dominantCluster && pt.properties.ntaName) {
-          ntaName = pt.properties.ntaName;
-          break;
+      if (expanded) {
+        try {
+          const contracted = turf.buffer(expanded, -smoothDist, { units: "kilometers" });
+          poly = contracted || expanded;
+        } catch (e2) {
+          poly = expanded;
         }
       }
     } catch (e) {
-      count = poly.properties?.count || 0;
+      // keep original poly
     }
-    return {
-      ...poly,
-      properties: {
-        id: i + 1,
-        count: count,
-        clusterId: dominantCluster,
-        ntaName: ntaName
-      }
+
+    // 5. Determine NTA name from cluster members
+    const ntaName = members.find(r => r.ntaName)?.ntaName || null;
+
+    poly.properties = {
+      id: parseInt(clusterId),
+      count: members.length,
+      clusterId: parseInt(clusterId),
+      ntaName: ntaName
     };
-  });
+    features.push(poly);
+  }
 
   return turf.featureCollection(features);
-}
-
-/**
- * Union an array of polygon features, merging overlapping ones.
- * Returns an array of individual polygon features.
- */
-function unionPolygons(polygons) {
-  if (polygons.length === 0) return [];
-  if (polygons.length === 1) return polygons;
-
-  // Iteratively union all polygons
-  let combined = polygons[0];
-  for (let i = 1; i < polygons.length; i++) {
-    try {
-      const result = turf.union(turf.featureCollection([combined, polygons[i]]));
-      if (result) {
-        combined = result;
-      }
-    } catch (e) {
-      // If union fails for a pair, skip and continue
-      console.warn("Union step failed at index", i, e);
-    }
-  }
-
-  // Explode multi-polygons into individual polygons
-  const result = [];
-  if (combined.geometry.type === "MultiPolygon") {
-    for (const coords of combined.geometry.coordinates) {
-      result.push(turf.polygon(coords));
-    }
-  } else if (combined.geometry.type === "Polygon") {
-    result.push(combined);
-  }
-
-  return result;
 }
