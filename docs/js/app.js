@@ -32,6 +32,7 @@ async function init() {
     // Initialize map and analysis modal
     initMap();
     initAnalysisModal();
+    initDBSCANModal();
 
     // Set up event listeners
     document.getElementById("eps-slider").addEventListener("input", onEpsSliderInput);
@@ -107,7 +108,7 @@ function renderOptions(container, filter) {
   // "All" option
   const allDiv = document.createElement("div");
   allDiv.className = "multi-select-option" + (allSelected ? " selected" : "");
-  allDiv.textContent = "All cuisines";
+  allDiv.textContent = (allSelected ? "✓ " : "") + "All cuisines";
   allDiv.addEventListener("click", function () {
     setSelectedCuisines(["__ALL__"]);
     runPipeline();
@@ -121,7 +122,7 @@ function renderOptions(container, filter) {
     const div = document.createElement("div");
     const isSelected = !allSelected && selectedCuisines.includes(c.name);
     div.className = "multi-select-option" + (isSelected ? " selected" : "");
-    div.textContent = `${c.name} (${c.count})`;
+    div.textContent = (isSelected ? "✓ " : "") + `${c.name} (${c.count})`;
     div.addEventListener("click", function () {
       toggleCuisineSelection(c.name);
       runPipeline();

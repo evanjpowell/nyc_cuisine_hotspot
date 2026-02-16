@@ -89,7 +89,8 @@ function updateDotsLayer(restaurants) {
     } else {
       label = r.ntaName ? `Cluster ${r.cluster} (${r.ntaName})` : `Cluster ${r.cluster}`;
     }
-    marker.bindPopup(`<strong>${r.n}</strong><br>${label}`);
+    const cuisineInfo = r.cu ? `<br><em>${r.cu}</em>` : "";
+    marker.bindPopup(`<strong>${r.n}</strong>${cuisineInfo}<br>${label}`);
     markers.push(marker);
   }
 

@@ -129,6 +129,27 @@ function initAnalysisModal() {
   }
 }
 
+function initDBSCANModal() {
+  const link = document.getElementById("dbscan-link");
+  const overlay = document.getElementById("dbscan-overlay");
+  const closeBtn = document.getElementById("dbscan-close");
+
+  link.addEventListener("click", function (e) {
+    e.preventDefault();
+    overlay.style.display = "flex";
+  });
+
+  closeBtn.addEventListener("click", function () {
+    overlay.style.display = "none";
+  });
+
+  overlay.addEventListener("click", function (e) {
+    if (e.target === overlay) {
+      overlay.style.display = "none";
+    }
+  });
+}
+
 function runAnalysis() {
   const status = document.getElementById("analysis-status");
   status.textContent = "Computing diffusion scores for all cuisines...";

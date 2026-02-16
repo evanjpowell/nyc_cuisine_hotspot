@@ -91,6 +91,8 @@
       the neighborhood radius, while the minPts multiplier scales the minimum
       restaurant count required to form a cluster.
       <a href="#" id="analysis-link">Which cuisines cluster the most?</a>
+      <br>
+      <a href="#" id="dbscan-link" class="analysis-link">What is DBSCAN?</a>
       <br><br>
       Data from the
       <a href="https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j" target="_blank" rel="noopener">
@@ -143,6 +145,30 @@
             <tbody id="analysis-tbody"></tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DBSCAN explanation modal -->
+  <div id="dbscan-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>What is DBSCAN?</h2>
+        <button id="dbscan-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- User will fill this in later -->
+         <p>DBSCAN, or Density Based Spatial Clustering of Applications with Noise, is an 
+         algorithm that uses a density concept based on three types of points (restaurants in this case):</p>
+         <ul class="modal-body">
+          <li>Core Points have more than <i>M</i> points with a set radius (EPS) around them</li> 
+          <li>Border Points have fewer than <i>M</i> points within this radius, but are reachable from core points</li>
+          <li>Outlier points are not reachable from core points</li>
+         </ul>
+         <p>
+          Where <i>M</i> is the minPts parameter. This allows for arbitrarily shaped clusters that can ignore noise
+          and outliers. The number of these clusters is defined by the data, allowing as few as zero clusters.
+         </p>
       </div>
     </div>
   </div>
