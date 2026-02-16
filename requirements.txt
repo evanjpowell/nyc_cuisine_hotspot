@@ -1,0 +1,2 @@
+# Python dependencies for NYC Cuisine Hotspot data updater
+sodapy>=2.2.0

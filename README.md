@@ -35,6 +35,32 @@ Restaurant data sourced from:
 3. Geocoded with latitude/longitude
 4. Clustered using borough-aware DBSCAN
 
+### Updating Data
+
+To refresh the restaurant data with the latest from NYC Open Data:
+
+```bash
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run the data updater script
+python update_data.py
+```
+
+The script will:
+- Download the latest restaurant inspection data from NYC Open Data API
+- Clean and deduplicate restaurants (following the same logic as the R analysis)
+- Generate updated `docs/data/cuisines.json` and `docs/data/restaurants.json`
+
+**Optional:** For faster API access, set these environment variables:
+```bash
+export SOCRATA_APP_TOKEN="your-token"
+export SOCRATA_EMAIL="your-email"
+export SOCRATA_PASSWORD="your-password"
+```
+
+Get an API token at: https://data.cityofnewyork.us/profile/app_tokens
+
 ## Technologies
 
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
