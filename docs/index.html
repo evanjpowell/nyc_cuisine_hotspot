@@ -32,7 +32,7 @@
     </div>
 
     <div class="control-group">
-      <label>Eps Multiplier</label>
+      <label><a href="#" id="eps-link">Eps Multiplier</a></label>
       <div class="slider-row">
         <input type="range" id="eps-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
         <span id="eps-value">1.0x</span>
@@ -44,7 +44,7 @@
     </div>
 
     <div class="control-group">
-      <label>MinPts Multiplier</label>
+      <label><a href="#" id="minpts-link">MinPts Multiplier</a></label>
       <div class="slider-row">
         <input type="range" id="minpts-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
         <span id="minpts-value">1.0x</span>
@@ -169,6 +169,63 @@
           Where <i>M</i> is the minPts parameter. This allows for arbitrarily shaped clusters that can ignore noise
           and outliers. The number of these clusters is defined by the data, allowing as few as zero clusters.
          </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eps Multiplier explanation modal -->
+  <div id="eps-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>What is the Eps Multiplier?</h2>
+        <button id="eps-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><b>Eps: How close to be considered neighbors</b></p>
+        <br/>
+        <p>
+          The DCScan clustering algorithm uses the idea of neighbors to assign clusters.
+          The epsilon parameter (Eps) is used to determine which nodes (restaurants) are
+          considered "neighbors" to each other. A larger value for Eps means farther restaurants
+          will be taken as neighbors to each other. A smaller value means a group of restaurants has to be more
+          "packed in" to be considered a hotspot. 
+          <br/>
+          <br/>
+          As the boroughs differ significantly in density, they each have their own Eps value
+          - restaurants that might seem close in Staten Island could be a few neighborhoods away in 
+          Manhattan, and this is accounted for. Because of this, the slider is an Eps multiplier, 
+          preserving the borough-based scaling.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MinPts Multiplier explanation modal -->
+  <div id="minpts-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>What is the MinPts Multiplier?</h2>
+        <button id="minpts-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><b>minPts: How many neighbors are needed to start a hotspot</b></p>
+        <br/>
+        <p>
+          In the DBScan Algorithm, clusters are created when nodes (restaurants) have enough neighbors. 
+          The core nodes around which a cluster (hotspot) grows must have a certain amount of neighbors, defined by
+          the minPts paramater. Only a restaurant with at least this many neighbors can start a cluster,
+          and it will bring in each of its neighbors with it. A restaurant without this many nearby connections
+          may still be in a cluster - if it is brought in by one of its own (more connected) neighbors.
+          <br/> <br/>
+          This is a bit different from just the minimum number of points in a cluster - the minPts parameter instead
+          determines the number of points needed to <i>start</i> a cluster. 
+          <br/> <br/>
+          Because the cuisines represented in the data have vastly different numbers of restaurants 
+          (compare nearly 5000 American restaurants to the dozen or so types with less than 10), setting
+          one universal minPts value doesn't make sense. The default minPts value is 1.5% of the total for
+          each label, or 4, whichever is higher. Increasing the slider is a multiplier on this value - a 
+          higehr value means more points are needed to start a cluster. 
+        </p>
       </div>
     </div>
   </div>

@@ -52,6 +52,16 @@ body {
   margin-bottom: 6px;
 }
 
+/* Clickable label links (e.g. slider titles) */
+.control-group label a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.control-group label a:hover {
+  text-decoration: underline;
+}
+
 /* Multi-select dropdown */
 .multi-select {
   position: relative;

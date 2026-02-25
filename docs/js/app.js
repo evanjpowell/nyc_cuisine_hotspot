@@ -33,6 +33,8 @@ async function init() {
     initMap();
     initAnalysisModal();
     initDBSCANModal();
+    initEpsModal();
+    initMinptsModal();
 
     // Set up event listeners
     document.getElementById("eps-slider").addEventListener("input", onEpsSliderInput);
