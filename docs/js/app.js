@@ -57,9 +57,17 @@ async function init() {
       togglePolygons(this.checked);
     });
 
-    // Explicitly reset subway checkbox — browsers restore form state across reloads,
-    // which would visually check the box while showSubway remains false.
+    // Explicitly reset all controls — browsers restore form state across reloads,
+    // which causes visual state to diverge from JS state.
+    document.getElementById("toggle-dots").checked = true;
+    document.getElementById("toggle-polygons").checked = true;
     document.getElementById("toggle-subway").checked = false;
+    document.getElementById("eps-slider").value = 1.0;
+    document.getElementById("eps-value").textContent = "1.0x";
+    currentEpsMultiplier = 1.0;
+    document.getElementById("minpts-slider").value = 1.0;
+    document.getElementById("minpts-value").textContent = "1.0x";
+    currentMinPtsMultiplier = 1.0;
     document.getElementById("toggle-subway").addEventListener("change", function () {
       toggleSubway(this.checked);
     });
