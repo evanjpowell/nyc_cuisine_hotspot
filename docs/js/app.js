@@ -63,10 +63,15 @@ async function init() {
       toggleSubway(this.checked);
     });
 
-    // Auto-select first cuisine
+    // Start on a random cuisine with >100 restaurants, excluding generic "Other"
     showLoading(false);
     if (cuisineList.length > 0) {
-      setSelectedCuisines([cuisineList[0].name]);
+      const candidates = cuisineList.filter(
+        c => c.count > 100 && c.name.toLowerCase() !== "other"
+      );
+      const pool = candidates.length > 0 ? candidates : cuisineList;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      setSelectedCuisines([pick.name]);
       runPipeline();
     }
   } catch (e) {
@@ -167,12 +172,16 @@ function renderOptions(container, filter) {
       renderOptions(container, filter);
     });
 
-    // Name: solo-selects (switches to only this cuisine)
+    // Name: solo-selects normally; Cmd/Ctrl+click toggles into multi-selection
     const nameSpan = document.createElement("span");
     nameSpan.className = "cuisine-name";
     nameSpan.textContent = `${c.name} (${c.count})`;
-    nameSpan.addEventListener("click", function () {
-      setSelectedCuisines([c.name]);
+    nameSpan.addEventListener("click", function (e) {
+      if (e.metaKey || e.ctrlKey) {
+        toggleCuisineSelection(c.name);
+      } else {
+        setSelectedCuisines([c.name]);
+      }
       runPipeline();
       renderOptions(container, filter);
     });
