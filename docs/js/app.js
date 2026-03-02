@@ -31,6 +31,13 @@ async function init() {
 
     // Initialize map and analysis modal
     initMap();
+
+    // Load subway layer independently so a missing file doesn't break the rest of the app
+    fetch("data/mta-subway.geojson")
+      .then(res => res.json())
+      .then(geojson => initSubwayLayer(geojson))
+      .catch(e => console.warn("Subway layer unavailable:", e));
+
     initAnalysisModal();
     initDBSCANModal();
     initCuisineLabelModal();
@@ -47,6 +54,10 @@ async function init() {
 
     document.getElementById("toggle-polygons").addEventListener("change", function () {
       togglePolygons(this.checked);
+    });
+
+    document.getElementById("toggle-subway").addEventListener("change", function () {
+      toggleSubway(this.checked);
     });
 
     // Auto-select first cuisine

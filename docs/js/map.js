@@ -19,11 +19,15 @@ const POLYGON_COLORS = [
 ];
 const POLYGON_OPACITY = 0.5;
 
+const SUBWAY_COLOR = "#7f7f7f";
+
 let map;
 let dotsLayer = null;
 let polygonLayer = null;
+let subwayLayer = null;
 let showDots = true;
 let showPolygons = true;
+let showSubway = false;
 
 /**
  * Initialize the Leaflet map.
@@ -217,6 +221,41 @@ function togglePolygons(visible) {
       polygonLayer.addTo(map);
     } else {
       map.removeLayer(polygonLayer);
+    }
+  }
+}
+
+/**
+ * Initialize the subway lines layer from a GeoJSON FeatureCollection.
+ * The layer is added to the map only if the toggle is on, and always
+ * kept behind restaurant layers via bringToBack().
+ */
+function initSubwayLayer(geojson) {
+  subwayLayer = L.geoJSON(geojson, {
+    style: {
+      color: SUBWAY_COLOR,
+      weight: 1.5,
+      opacity: 0.7
+    }
+  });
+
+  if (showSubway) {
+    subwayLayer.addTo(map);
+    subwayLayer.bringToBack();
+  }
+}
+
+/**
+ * Toggle subway layer visibility.
+ */
+function toggleSubway(visible) {
+  showSubway = visible;
+  if (subwayLayer) {
+    if (visible) {
+      subwayLayer.addTo(map);
+      subwayLayer.bringToBack();
+    } else {
+      map.removeLayer(subwayLayer);
     }
   }
 }
