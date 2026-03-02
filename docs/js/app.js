@@ -56,6 +56,9 @@ async function init() {
       togglePolygons(this.checked);
     });
 
+    // Explicitly reset subway checkbox — browsers restore form state across reloads,
+    // which would visually check the box while showSubway remains false.
+    document.getElementById("toggle-subway").checked = false;
     document.getElementById("toggle-subway").addEventListener("change", function () {
       toggleSubway(this.checked);
     });
