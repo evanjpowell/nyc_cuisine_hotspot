@@ -150,6 +150,27 @@ function initDBSCANModal() {
   });
 }
 
+function initCuisineLabelModal() {
+  const link = document.getElementById("cuisine-label-link");
+  const overlay = document.getElementById("cuisine-label-overlay");
+  const closeBtn = document.getElementById("cuisine-label-close");
+
+  link.addEventListener("click", function (e) {
+    e.preventDefault();
+    overlay.style.display = "flex";
+  });
+
+  closeBtn.addEventListener("click", function () {
+    overlay.style.display = "none";
+  });
+
+  overlay.addEventListener("click", function (e) {
+    if (e.target === overlay) {
+      overlay.style.display = "none";
+    }
+  });
+}
+
 function initEpsModal() {
   const link = document.getElementById("eps-link");
   const overlay = document.getElementById("eps-overlay");

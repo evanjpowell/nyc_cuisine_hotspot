@@ -33,6 +33,7 @@ async function init() {
     initMap();
     initAnalysisModal();
     initDBSCANModal();
+    initCuisineLabelModal();
     initEpsModal();
     initMinptsModal();
 

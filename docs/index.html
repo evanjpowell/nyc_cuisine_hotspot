@@ -93,6 +93,8 @@
       <a href="#" id="analysis-link">Which cuisines cluster the most?</a>
       <br>
       <a href="#" id="dbscan-link" class="analysis-link">What is DBSCAN?</a>
+      <br>
+      <a href="#" id="cuisine-label-link" class="analysis-link">How are cuisines labeled?</a>
       <br><br>
       Data from the
       <a href="https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j" target="_blank" rel="noopener">
@@ -169,6 +171,24 @@
           Where <i>M</i> is the minPts parameter. This allows for arbitrarily shaped clusters that can ignore noise
           and outliers. The number of these clusters is defined by the data, allowing as few as zero clusters.
          </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cuisine labeling explanation modal -->
+  <div id="cuisine-label-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>How are cuisines labeled?</h2>
+        <button id="cuisine-label-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>From DOMNH via NYC Open Data: <br/> <br/>
+        "This field describes the entity (restaurant) cuisine;
+         Optional field provided by provided by restaurant owner/manager"
+         <br/> <br/>
+         
+        </p>
       </div>
     </div>
   </div>
