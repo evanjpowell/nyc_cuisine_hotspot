@@ -6,6 +6,7 @@ let selectedCuisines = [];
 let currentEpsMultiplier = 1.0;
 let currentMinPtsMultiplier = 1.0;
 let debounceTimer = null;
+let darkMode = false;
 
 /**
  * Load data files and initialize the application.
@@ -29,6 +30,10 @@ async function init() {
     // Build multi-select cuisine dropdown
     buildCuisineDropdown();
 
+    // Apply dark/light mode from browser preference before map initializes
+    darkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (darkMode) document.documentElement.dataset.theme = "dark";
+
     // Initialize map and analysis modal
     initMap();
 
@@ -44,6 +49,7 @@ async function init() {
     initEpsModal();
     initMinptsModal();
     initCollapsibles();
+    initTheme();
 
     // Set up event listeners
     document.getElementById("eps-slider").addEventListener("input", onEpsSliderInput);
@@ -365,6 +371,25 @@ function initCollapsibles() {
       btn.textContent = isOpen ? "v" : "^";
     });
   });
+}
+
+/**
+ * Set up the dark/light mode toggle button.
+ * Icon: 🌙 in light mode (click to go dark), ☀️ in dark mode (click to go light).
+ */
+function initTheme() {
+  const btn = document.getElementById("theme-toggle");
+  btn.textContent = darkMode ? "☀️" : "🌙";
+  btn.addEventListener("click", toggleTheme);
+}
+
+function toggleTheme() {
+  darkMode = !darkMode;
+  document.documentElement.dataset.theme = darkMode ? "dark" : "";
+  document.getElementById("theme-toggle").textContent = darkMode ? "☀️" : "🌙";
+  setMapTheme(darkMode);
+  restyleSubway();
+  restylePolygons();
 }
 
 // Start the app when DOM is ready

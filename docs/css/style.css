@@ -501,3 +501,245 @@ body {
     min-height: 55vh;
   }
 }
+
+/* ===== Theme toggle button ===== */
+
+#theme-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+  padding: 0;
+  line-height: 1;
+}
+
+#theme-toggle:hover {
+  background: rgba(240, 240, 240, 0.95);
+}
+
+/* ===== Smooth theme transition ===== */
+
+body,
+#sidebar,
+#sidebar h1,
+#sidebar .subtitle,
+.control-group,
+.control-group label,
+#params-content label,
+.collapse-btn,
+.multi-select-toggle,
+.multi-select-menu,
+.multi-select-option,
+.toggle-row label,
+.info-panel,
+.info-panel h3,
+.info-item .info-label,
+.info-item .info-value,
+.about-text,
+#loading,
+.modal,
+.modal-header,
+.modal-close,
+#analysis-table th,
+#analysis-table td,
+#theme-toggle {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ===== Dark mode overrides ===== */
+
+[data-theme="dark"] body {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] #sidebar {
+  background: #1a1a1a;
+  border-right-color: #333;
+}
+
+[data-theme="dark"] #sidebar h1 {
+  color: #f0f0f0;
+}
+
+[data-theme="dark"] #sidebar .subtitle {
+  color: #888;
+}
+
+[data-theme="dark"] .control-group {
+  border-top-color: #2a2a2a;
+}
+
+[data-theme="dark"] .control-group label {
+  color: #999;
+}
+
+[data-theme="dark"] #params-content label {
+  color: #c0c0c0;
+}
+
+[data-theme="dark"] .collapse-btn {
+  color: #555;
+}
+
+[data-theme="dark"] .collapse-btn:hover {
+  color: #aaa;
+}
+
+[data-theme="dark"] .multi-select-toggle {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .multi-select-toggle:hover {
+  border-color: #666;
+}
+
+[data-theme="dark"] .multi-select-menu {
+  background: #2a2a2a;
+  border-color: #444;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .multi-select-search {
+  border-bottom-color: #333;
+}
+
+[data-theme="dark"] .multi-select-search input {
+  background: #1e1e1e;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .multi-select-search input:focus {
+  border-color: #E41A1C;
+}
+
+[data-theme="dark"] .multi-select-option {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .multi-select-option:hover {
+  background: #333;
+}
+
+[data-theme="dark"] .multi-select-option.selected {
+  background: #2a1a1a;
+  border-left-color: #E41A1C;
+}
+
+[data-theme="dark"] .multi-select-option .cuisine-name:hover {
+  color: #ff6b6b;
+}
+
+[data-theme="dark"] .toggle-row label {
+  color: #ccc;
+}
+
+[data-theme="dark"] .info-panel {
+  border-top-color: #2a2a2a;
+}
+
+[data-theme="dark"] .info-panel h3 {
+  color: #999;
+}
+
+[data-theme="dark"] .info-item .info-label {
+  color: #888;
+}
+
+[data-theme="dark"] .info-item .info-value {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .about-text {
+  border-top-color: #2a2a2a;
+  color: #888;
+}
+
+[data-theme="dark"] .about-text a {
+  color: #5b9fd4;
+}
+
+[data-theme="dark"] #loading {
+  background: rgba(0, 0, 0, 0.7);
+  color: #bbb;
+}
+
+[data-theme="dark"] .spinner {
+  border-color: #444;
+  border-top-color: #E41A1C;
+}
+
+[data-theme="dark"] .modal-overlay {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+[data-theme="dark"] .modal {
+  background: #1e1e1e;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .modal-header {
+  border-bottom-color: #333;
+}
+
+[data-theme="dark"] .modal-header h2 {
+  color: #f0f0f0;
+}
+
+[data-theme="dark"] .modal-close {
+  color: #777;
+}
+
+[data-theme="dark"] .modal-close:hover {
+  color: #ccc;
+}
+
+[data-theme="dark"] .modal-intro {
+  color: #aaa;
+}
+
+[data-theme="dark"] .analysis-status {
+  color: #666;
+}
+
+[data-theme="dark"] #analysis-table th {
+  background: #252525;
+  color: #aaa;
+  border-bottom-color: #444;
+}
+
+[data-theme="dark"] #analysis-table th:hover {
+  background: #333;
+}
+
+[data-theme="dark"] #analysis-table td {
+  border-bottom-color: #252525;
+  color: #ccc;
+}
+
+[data-theme="dark"] #analysis-table tr:hover td {
+  background: #242424;
+}
+
+[data-theme="dark"] #theme-toggle {
+  background: rgba(30, 30, 30, 0.9);
+  border-color: #555;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] #theme-toggle:hover {
+  background: rgba(50, 50, 50, 0.95);
+}

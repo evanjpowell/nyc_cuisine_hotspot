@@ -12,16 +12,27 @@ const NOISE_OPACITY = 0.3;
 const CLUSTER_OPACITY = 0.7;
 const DOT_RADIUS = 5;
 
-// YlOrRd color scale for polygon fill (matching R's sequential palette)
+// YlOrRd color scale for polygon fill — light mode: pale yellow (low) → dark red (high)
 const POLYGON_COLORS = [
   "#FFFFB2", "#FED976", "#FEB24C", "#FD8D3C",
   "#FC4E2A", "#E31A1C", "#B10026"
 ];
+// Dark mode: dark red (low) → bright yellow-white (high)
+const POLYGON_COLORS_DARK = [
+  "#B10026", "#E31A1C", "#FC4E2A", "#FD8D3C",
+  "#FEB24C", "#FED976", "#FFFFB2"
+];
 const POLYGON_OPACITY = 0.5;
 
 const SUBWAY_COLOR = "#7f7f7f";
+const SUBWAY_COLOR_DARK = "#888888";
+
+const TILE_URL_LIGHT = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+const TILE_URL_DARK  = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>';
 
 let map;
+let tileLayer = null;
 let dotsLayer = null;
 let polygonLayer = null;
 let subwayLayer = null;
@@ -39,11 +50,25 @@ function initMap() {
     zoomControl: true
   });
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+  const dark = document.documentElement.dataset.theme === "dark";
+  tileLayer = L.tileLayer(dark ? TILE_URL_DARK : TILE_URL_LIGHT, {
+    attribution: TILE_ATTRIBUTION,
     subdomains: "abcd",
     maxZoom: 19
   }).addTo(map);
+}
+
+/**
+ * Swap the basemap tile layer when toggling dark/light mode.
+ */
+function setMapTheme(dark) {
+  if (tileLayer) map.removeLayer(tileLayer);
+  tileLayer = L.tileLayer(dark ? TILE_URL_DARK : TILE_URL_LIGHT, {
+    attribution: TILE_ATTRIBUTION,
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(map);
+  if (subwayLayer) subwayLayer.bringToBack();
 }
 
 /**
@@ -56,13 +81,13 @@ function getClusterColor(clusterId) {
 
 /**
  * Interpolate into the YlOrRd palette based on a 0-1 value.
+ * Uses the dark palette when dark mode is active.
  */
 function getPolygonColor(value) {
-  const idx = Math.min(
-    Math.floor(value * POLYGON_COLORS.length),
-    POLYGON_COLORS.length - 1
-  );
-  return POLYGON_COLORS[idx];
+  const dark = document.documentElement.dataset.theme === "dark";
+  const palette = dark ? POLYGON_COLORS_DARK : POLYGON_COLORS;
+  const idx = Math.min(Math.floor(value * palette.length), palette.length - 1);
+  return palette[idx];
 }
 
 /**
@@ -126,10 +151,12 @@ function getPolygonStyle(feature, maxCount) {
   } else {
     // Heat-map style by restaurant count
     const normalized = maxCount > 0 ? count / maxCount : 0;
+    const fillColor = getPolygonColor(normalized);
+    const dark = document.documentElement.dataset.theme === "dark";
     return {
-      fillColor: getPolygonColor(normalized),
+      fillColor: fillColor,
       fillOpacity: POLYGON_OPACITY,
-      color: "#E31A1C",
+      color: dark ? fillColor : "#E31A1C",
       weight: 1.5,
       opacity: 0.7
     };
@@ -231,9 +258,10 @@ function togglePolygons(visible) {
  * kept behind restaurant layers via bringToBack().
  */
 function initSubwayLayer(geojson) {
+  const dark = document.documentElement.dataset.theme === "dark";
   subwayLayer = L.geoJSON(geojson, {
     style: {
-      color: SUBWAY_COLOR,
+      color: dark ? SUBWAY_COLOR_DARK : SUBWAY_COLOR,
       weight: 1.5,
       opacity: 0.7
     }
@@ -258,4 +286,14 @@ function toggleSubway(visible) {
       map.removeLayer(subwayLayer);
     }
   }
+}
+
+/**
+ * Re-color subway lines to match the current theme.
+ * Called when toggling dark/light mode.
+ */
+function restyleSubway() {
+  if (!subwayLayer) return;
+  const dark = document.documentElement.dataset.theme === "dark";
+  subwayLayer.setStyle({ color: dark ? SUBWAY_COLOR_DARK : SUBWAY_COLOR });
 }
