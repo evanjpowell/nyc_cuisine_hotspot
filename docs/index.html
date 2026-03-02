@@ -32,26 +32,29 @@
     </div>
 
     <div class="control-group">
-      <label><a href="#" id="eps-link">Eps Multiplier</a></label>
-      <div class="slider-row">
-        <input type="range" id="eps-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
-        <span id="eps-value">1.0x</span>
+      <div class="collapsible-header">
+        <label>Parameters</label>
+        <button class="collapse-btn" data-target="params-content">^</button>
       </div>
-      <div class="slider-labels">
-        <span>0.5x (tighter)</span>
-        <span>2.0x (looser)</span>
-      </div>
-    </div>
-
-    <div class="control-group">
-      <label><a href="#" id="minpts-link">MinPts Multiplier</a></label>
-      <div class="slider-row">
-        <input type="range" id="minpts-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
-        <span id="minpts-value">1.0x</span>
-      </div>
-      <div class="slider-labels">
-        <span>0.5x (fewer)</span>
-        <span>2.0x (more)</span>
+      <div id="params-content">
+        <label><a href="#" id="eps-link">Eps Multiplier</a></label>
+        <div class="slider-row">
+          <input type="range" id="eps-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
+          <span id="eps-value">1.0x</span>
+        </div>
+        <div class="slider-labels">
+          <span>0.5x (tighter)</span>
+          <span>2.0x (looser)</span>
+        </div>
+        <label class="param-section"><a href="#" id="minpts-link">MinPts Multiplier</a></label>
+        <div class="slider-row">
+          <input type="range" id="minpts-slider" min="0.5" max="2.0" step="0.1" value="1.0" />
+          <span id="minpts-value">1.0x</span>
+        </div>
+        <div class="slider-labels">
+          <span>0.5x (fewer)</span>
+          <span>2.0x (more)</span>
+        </div>
       </div>
     </div>
 
@@ -67,23 +70,28 @@
     </div>
 
     <div class="info-panel">
-      <h3>Cluster Info</h3>
-      <div class="info-grid">
-        <div class="info-item">
-          <span class="info-label">Restaurants: </span>
-          <span class="info-value" id="info-total">-</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Clusters: </span>
-          <span class="info-value" id="info-clusters">-</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">minPts: </span>
-          <span class="info-value" id="info-minpts">-</span>
-        </div>
-        <div class="info-item full-width">
-          <span class="info-label">eps: </span>
-          <span class="info-value" id="info-eps">-</span>
+      <div class="collapsible-header">
+        <h3>Cluster Info</h3>
+        <button class="collapse-btn" data-target="info-content">^</button>
+      </div>
+      <div id="info-content">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Restaurants: </span>
+            <span class="info-value" id="info-total">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Clusters: </span>
+            <span class="info-value" id="info-clusters">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">minPts: </span>
+            <span class="info-value" id="info-minpts">-</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="info-label">eps: </span>
+            <span class="info-value" id="info-eps">-</span>
+          </div>
         </div>
       </div>
     </div>

@@ -52,6 +52,50 @@ body {
   margin-bottom: 6px;
 }
 
+/* Collapsible section headers */
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* Header wraps the label/h3, so cancel their bottom margin */
+.collapsible-header label,
+.collapsible-header h3 {
+  margin-bottom: 0;
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #bbb;
+  padding: 0 2px;
+  line-height: 1;
+  font-family: monospace;
+}
+
+.collapse-btn:hover {
+  color: #666;
+}
+
+/* Spacing for second parameter sub-label */
+.param-section {
+  margin-top: 10px;
+}
+
+/* Parameter sub-labels (Eps / MinPts) — quieter than section titles */
+#params-content label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: #444;
+  font-size: 0.75rem;
+}
+
 /* Clickable label links (e.g. slider titles) */
 .control-group label a {
   color: inherit;

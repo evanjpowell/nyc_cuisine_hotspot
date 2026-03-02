@@ -43,6 +43,7 @@ async function init() {
     initCuisineLabelModal();
     initEpsModal();
     initMinptsModal();
+    initCollapsibles();
 
     // Set up event listeners
     document.getElementById("eps-slider").addEventListener("input", onEpsSliderInput);
@@ -341,6 +342,21 @@ function showError(msg) {
   setTimeout(() => {
     el.style.display = "none";
   }, 5000);
+}
+
+/**
+ * Wire up all collapsible section toggles.
+ * Sections start open (^). Clicking closes them (v) and vice versa.
+ */
+function initCollapsibles() {
+  document.querySelectorAll(".collapse-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const content = document.getElementById(btn.dataset.target);
+      const isOpen = content.style.display !== "none";
+      content.style.display = isOpen ? "none" : "";
+      btn.textContent = isOpen ? "v" : "^";
+    });
+  });
 }
 
 // Start the app when DOM is ready
