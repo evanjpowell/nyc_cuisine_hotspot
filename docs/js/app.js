@@ -122,15 +122,31 @@ function renderOptions(container, filter) {
   const allSelected = selectedCuisines.length === 0 ||
     (selectedCuisines.length === 1 && selectedCuisines[0] === "__ALL__");
 
-  // "All" option
+  // "All" option — checkbox and name both select all
   const allDiv = document.createElement("div");
   allDiv.className = "multi-select-option" + (allSelected ? " selected" : "");
-  allDiv.textContent = (allSelected ? "✓ " : "") + "All cuisines";
-  allDiv.addEventListener("click", function () {
+
+  const allCheck = document.createElement("input");
+  allCheck.type = "checkbox";
+  allCheck.className = "cuisine-checkbox";
+  allCheck.checked = allSelected;
+  allCheck.addEventListener("change", function () {
     setSelectedCuisines(["__ALL__"]);
     runPipeline();
     renderOptions(container, filter);
   });
+
+  const allName = document.createElement("span");
+  allName.className = "cuisine-name";
+  allName.textContent = "All cuisines";
+  allName.addEventListener("click", function () {
+    setSelectedCuisines(["__ALL__"]);
+    runPipeline();
+    renderOptions(container, filter);
+  });
+
+  allDiv.appendChild(allCheck);
+  allDiv.appendChild(allName);
   container.appendChild(allDiv);
 
   // Individual cuisines
@@ -139,12 +155,30 @@ function renderOptions(container, filter) {
     const div = document.createElement("div");
     const isSelected = !allSelected && selectedCuisines.includes(c.name);
     div.className = "multi-select-option" + (isSelected ? " selected" : "");
-    div.textContent = (isSelected ? "✓ " : "") + `${c.name} (${c.count})`;
-    div.addEventListener("click", function () {
+
+    // Checkbox: toggles this cuisine into/out of a multi-selection
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.className = "cuisine-checkbox";
+    check.checked = isSelected;
+    check.addEventListener("change", function () {
       toggleCuisineSelection(c.name);
       runPipeline();
       renderOptions(container, filter);
     });
+
+    // Name: solo-selects (switches to only this cuisine)
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "cuisine-name";
+    nameSpan.textContent = `${c.name} (${c.count})`;
+    nameSpan.addEventListener("click", function () {
+      setSelectedCuisines([c.name]);
+      runPipeline();
+      renderOptions(container, filter);
+    });
+
+    div.appendChild(check);
+    div.appendChild(nameSpan);
     container.appendChild(div);
   }
 }

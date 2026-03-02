@@ -122,9 +122,12 @@ body {
 }
 
 .multi-select-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   padding: 6px 10px;
   font-size: 0.85rem;
-  cursor: pointer;
+  cursor: default;
   border-left: 3px solid transparent;
 }
 
@@ -136,6 +139,21 @@ body {
   background: #fef2f2;
   border-left-color: #E41A1C;
   font-weight: 600;
+}
+
+.multi-select-option .cuisine-checkbox {
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #E41A1C;
+}
+
+.multi-select-option .cuisine-name {
+  flex: 1;
+  cursor: pointer;
+}
+
+.multi-select-option .cuisine-name:hover {
+  color: #E41A1C;
 }
 
 /* Slider */
