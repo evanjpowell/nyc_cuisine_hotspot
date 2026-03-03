@@ -535,12 +535,12 @@ body {
     min-height: 0;
   }
 
-  /* Mobile panel header */
+  /* Mobile panel header — extra top padding for notch/Dynamic Island */
   #mobile-panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 16px;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
     flex-shrink: 0;
     border-bottom: 1px solid #eee;
   }
@@ -587,19 +587,20 @@ body {
     background: #c0161a;
   }
 
-  /* Fixed bottom bar (collapsed state) */
+  /* Fixed bottom bar — height grows to accommodate home indicator safe area.
+     Math: content area = (64 + safe) - 10 - (10 + safe) = 44px always. */
   #mobile-bar {
     display: flex;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 64px;
+    height: calc(64px + env(safe-area-inset-bottom));
     background: #fff;
     border-top: 1px solid #ddd;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     z-index: 2000;
-    padding: 10px 12px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     gap: 10px;
     align-items: stretch;
   }
@@ -645,6 +646,20 @@ body {
   #mobile-open-panel:hover {
     border-color: #999;
     background: #f5f5f5;
+  }
+
+  /* Push map controls below notch/Dynamic Island */
+  #theme-toggle {
+    top: calc(12px + env(safe-area-inset-top));
+  }
+
+  .leaflet-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Prevent Safari auto-zoom on input focus (triggers below 16px font-size) */
+  .multi-select-search input {
+    font-size: 16px;
   }
 
   /* Cuisine dropdown floated above the bottom bar (opened from the pill) */
