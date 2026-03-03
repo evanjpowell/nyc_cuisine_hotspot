@@ -50,6 +50,7 @@ async function init() {
     initMinptsModal();
     initCollapsibles();
     initTheme();
+    initMobilePanel();
 
     // Set up event listeners
     document.getElementById("eps-slider").addEventListener("input", onEpsSliderInput);
@@ -132,6 +133,10 @@ function buildCuisineDropdown() {
     if (menuOpen) {
       menuOpen = false;
       menu.style.display = "none";
+      if (menu.classList.contains("dropdown-floating")) {
+        menu.classList.remove("dropdown-floating");
+        document.getElementById("cuisine-dropdown").appendChild(menu);
+      }
     }
   });
   menu.addEventListener("click", function (e) { e.stopPropagation(); });
@@ -234,13 +239,17 @@ function setSelectedCuisines(cuisines) {
 
 function updateToggleLabel() {
   const toggle = document.getElementById("cuisine-toggle");
+  let label;
   if (selectedCuisines.length === 0 || (selectedCuisines.length === 1 && selectedCuisines[0] === "__ALL__")) {
-    toggle.textContent = "All cuisines";
+    label = "All cuisines";
   } else if (selectedCuisines.length === 1) {
-    toggle.textContent = selectedCuisines[0];
+    label = selectedCuisines[0];
   } else {
-    toggle.textContent = selectedCuisines.length + " cuisines selected";
+    label = selectedCuisines.length + " cuisines selected";
   }
+  toggle.textContent = label;
+  const pill = document.getElementById("mobile-cuisine-pill");
+  if (pill) pill.textContent = label;
 }
 
 // --- Sliders ---
@@ -390,6 +399,54 @@ function toggleTheme() {
   setMapTheme(darkMode);
   restyleSubway();
   restylePolygons();
+}
+
+/**
+ * Mobile panel: open/close the full-screen sidebar overlay.
+ * Only wired up when the elements exist (they're hidden on desktop via CSS).
+ */
+function initMobilePanel() {
+  const sidebar = document.getElementById("sidebar");
+  const openBtn = document.getElementById("mobile-open-panel");
+  const cuisinePill = document.getElementById("mobile-cuisine-pill");
+  const closeBtn = document.getElementById("mobile-close-panel");
+  const doneBtn = document.getElementById("mobile-done-btn");
+
+  function openPanel() {
+    sidebar.classList.add("mobile-open");
+  }
+
+  function closePanel() {
+    sidebar.classList.remove("mobile-open");
+  }
+
+  openBtn.addEventListener("click", openPanel);
+
+  // Pill opens the dropdown floating above the bar — no panel needed.
+  // The menu is moved to <body> to escape the sidebar's CSS transform context,
+  // which would otherwise prevent position:fixed from working correctly.
+  cuisinePill.addEventListener("click", function (e) {
+    e.stopPropagation();
+    const menu = document.getElementById("cuisine-menu");
+    const searchInput = document.getElementById("cuisine-search");
+    const optionsContainer = document.getElementById("cuisine-options");
+    if (menuOpen) {
+      menuOpen = false;
+      menu.style.display = "none";
+      menu.classList.remove("dropdown-floating");
+      document.getElementById("cuisine-dropdown").appendChild(menu);
+      return;
+    }
+    menuOpen = true;
+    document.body.appendChild(menu);
+    menu.classList.add("dropdown-floating");
+    searchInput.value = "";
+    renderOptions(optionsContainer, "");
+    searchInput.focus();
+  });
+
+  closeBtn.addEventListener("click", closePanel);
+  doneBtn.addEventListener("click", closePanel);
 }
 
 // Start the app when DOM is ready
