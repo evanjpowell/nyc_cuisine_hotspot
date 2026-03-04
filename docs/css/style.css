@@ -464,12 +464,12 @@ body {
 }
 
 #analysis-table th.sort-asc::after {
-  content: " \u25B2";
+  content: " ▲";
   font-size: 0.65rem;
 }
 
 #analysis-table th.sort-desc::after {
-  content: " \u25BC";
+  content: " ▼";
   font-size: 0.65rem;
 }
 

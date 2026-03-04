@@ -31,9 +31,12 @@ function calcConcentration(clusteredData) {
   const pctClustered = clusteredCount / N;
   const largestShare = nClusters > 0 ? Math.max(...clusterSizes) / N : 0;
 
-  // Shannon entropy (normalized), including noise as its own bin
+  // Shannon entropy (normalized).
+  // Each noise restaurant is treated as its own isolated bin, so a cuisine
+  // that is 100% noise (never clusters) gets Hn → 1.0 (maximally diffuse)
+  // rather than 0 (which the lumped-noise approach incorrectly produced).
   const bins = [...clusterSizes];
-  if (noiseCount > 0) bins.push(noiseCount);
+  for (let i = 0; i < noiseCount; i++) bins.push(1);
 
   let H = 0;
   for (const b of bins) {
