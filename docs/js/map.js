@@ -2,9 +2,9 @@
 
 // Color palette matching R's brewer.pal("Set1") for cluster dots
 const CLUSTER_COLORS = [
-  "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
-  "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5",
-  "#FC8D62", "#8DA0CB"
+  "#E41A1C", "#377EB8", "#399136", "#984EA3", "#FF7F00",
+   "#F781BF", "#66C2A5", "#FC8D62", "#8DA0CB", 
+   "#FFFF33", "#A65628",
 ];
 
 const NOISE_COLOR = "#AAAAAA";
