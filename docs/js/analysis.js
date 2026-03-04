@@ -67,7 +67,10 @@ function computeAllDiffusionScores(allRestaurants, cuisineList) {
   const results = [];
   for (const c of cuisineList) {
     const cuisineData = allRestaurants.filter(r => r.cu === c.name);
-    if (cuisineData.length === 0) continue;
+    // Skip single-restaurant cuisines: with only one location the metric reduces
+    // to Hn=0 regardless of geography, which conflates "one restaurant exists"
+    // with "tightly geographically concentrated."
+    if (cuisineData.length <= 1) continue;
 
     // Run clustering with default multipliers (1.0)
     const { restaurants: clustered } = runBoroughClustering(cuisineData, 1.0, 1.0);
@@ -246,11 +249,17 @@ function renderAnalysisTable() {
   const tbody = document.getElementById("analysis-tbody");
   tbody.innerHTML = "";
 
+  // Normalize colors to the actual data range [minDiff, maxDiff] → [0, 1]
+  // so the full color spectrum maps to the scores that actually appear in the data.
+  const maxDiff = Math.max(...analysisData.map(r => r.diffusion));
+  const minDiff = Math.min(...analysisData.map(r => r.diffusion));
+  const diffRange = maxDiff - minDiff;
+
   for (const row of sorted) {
     const tr = document.createElement("tr");
 
-    // Color the diffusion cell
-    const diffColor = diffusionToColor(row.diffusion);
+    // Color the diffusion cell (normalized to actual data range)
+    const diffColor = diffusionToColor(diffRange > 0 ? (row.diffusion - minDiff) / diffRange : 0);
 
     tr.innerHTML =
       `<td>${row.cuisine}</td>` +
@@ -265,13 +274,14 @@ function renderAnalysisTable() {
 }
 
 /**
- * Map a diffusion score (0-1) to a color from green (concentrated) to yellow to red (diffuse).
+ * Map a normalized diffusion score (0–1) to a color.
+ * Orange (concentrated) → Teal (diffuse): neutral scale with no good/bad implication.
  */
 function diffusionToColor(value) {
-  // Clamp
   const v = Math.max(0, Math.min(1, value));
-  // Green (low diffusion / concentrated) -> Yellow -> Red (high diffusion / spread out)
-  const r = Math.round(v < 0.5 ? v * 2 * 255 : 255);
-  const g = Math.round(v < 0.5 ? 255 : (1 - v) * 2 * 255);
-  return `rgba(${r}, ${g}, 60, 0.3)`;
+  const r = Math.round(255 * (1 - v));       // 255 → 0
+  const g = Math.round(195 - 70 * v);        // 195 → 125
+  const b = Math.round(85 + 40 * v);         // 85  → 125
+  const a = (0.45 + 0.1 * v).toFixed(2);    // 0.45 → 0.55
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
