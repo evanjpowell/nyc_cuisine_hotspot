@@ -478,7 +478,6 @@ function initMobilePanel() {
     menu.classList.add("dropdown-floating");
     searchInput.value = "";
     renderOptions(optionsContainer, "");
-    searchInput.focus();
   });
 
   closeBtn.addEventListener("click", closePanel);
