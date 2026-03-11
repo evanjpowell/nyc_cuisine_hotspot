@@ -174,6 +174,11 @@ function updateDotsLayer(restaurants) {
   dotsLayer = L.layerGroup(markers);
   if (showDots) {
     dotsLayer.addTo(map);
+    // Fade in the dots pane — remove/re-add class to restart the animation
+    const pane = map.getPane('dotsPane');
+    pane.classList.remove('dots-fade-in');
+    void pane.offsetWidth; // force reflow so the animation restarts
+    pane.classList.add('dots-fade-in');
   }
 }
 
@@ -250,6 +255,13 @@ function updatePolygonLayer(geojson) {
             `<div class="rp-tags">${countTag}</div>` +
           `</div>` +
         `</div>`;
+      // Subtle pulse fill on click, then settle back
+      layer.on('click', function () {
+        layer.setStyle({ fillOpacity: 0.72, opacity: 0.9 });
+        setTimeout(function () {
+          layer.setStyle({ fillOpacity: POLYGON_OPACITY, opacity: 0.7 });
+        }, 200);
+      });
       layer.bindPopup(popupHtml, { className: 'restaurant-popup-wrap', maxWidth: 260 });
     }
   });

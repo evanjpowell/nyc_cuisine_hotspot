@@ -1209,3 +1209,14 @@ body,
 [data-theme="dark"] .dot-nameplate::before {
   border-top-color: rgba(32, 32, 32, 0.92) !important;
 }
+
+/* ===== Dot layer fade-in ===== */
+
+@keyframes dots-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.dots-fade-in {
+  animation: dots-fade-in 0.55s ease-out forwards;
+}
