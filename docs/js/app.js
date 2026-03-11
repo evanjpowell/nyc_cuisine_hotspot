@@ -70,11 +70,11 @@ async function init() {
     document.getElementById("toggle-dots").checked = true;
     document.getElementById("toggle-polygons").checked = true;
     document.getElementById("toggle-subway").checked = false;
-    document.getElementById("eps-slider").value = 1.0;
-    document.getElementById("eps-value").textContent = "1.0x";
+    document.getElementById("eps-slider").value = 0;
+    document.getElementById("eps-value").textContent = "1x";
     currentEpsMultiplier = 1.0;
-    document.getElementById("minpts-slider").value = 1.0;
-    document.getElementById("minpts-value").textContent = "1.0x";
+    document.getElementById("minpts-slider").value = 0;
+    document.getElementById("minpts-value").textContent = "1x";
     currentMinPtsMultiplier = 1.0;
     document.getElementById("toggle-subway").addEventListener("change", function () {
       toggleSubway(this.checked);
@@ -255,9 +255,19 @@ function updateToggleLabel() {
 
 // --- Sliders ---
 
+/**
+ * Convert a log₂ slider value to a human-readable multiplier string.
+ * e.g. -2 → "0.25x", 0 → "1x", 1 → "2x", 0.5 → "1.4x"
+ */
+function formatMultiplier(logVal) {
+  const m = Math.pow(2, logVal);
+  return parseFloat(m.toPrecision(2)) + 'x';
+}
+
 function onEpsSliderInput() {
-  currentEpsMultiplier = parseFloat(document.getElementById("eps-slider").value);
-  document.getElementById("eps-value").textContent = currentEpsMultiplier.toFixed(1) + "x";
+  const logVal = parseFloat(document.getElementById("eps-slider").value);
+  currentEpsMultiplier = Math.pow(2, logVal);
+  document.getElementById("eps-value").textContent = formatMultiplier(logVal);
 
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
@@ -266,8 +276,9 @@ function onEpsSliderInput() {
 }
 
 function onMinPtsSliderInput() {
-  currentMinPtsMultiplier = parseFloat(document.getElementById("minpts-slider").value);
-  document.getElementById("minpts-value").textContent = currentMinPtsMultiplier.toFixed(1) + "x";
+  const logVal = parseFloat(document.getElementById("minpts-slider").value);
+  currentMinPtsMultiplier = Math.pow(2, logVal);
+  document.getElementById("minpts-value").textContent = formatMultiplier(logVal);
 
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
@@ -298,7 +309,7 @@ function initSliderBubbles() {
       const pct = (val - min) / (max - min);
       const thumbW = 16; // approximate thumb width in px
       bubble.style.left = (pct * (slider.offsetWidth - thumbW) + thumbW / 2) + 'px';
-      bubble.textContent = val.toFixed(1) + 'x';
+      bubble.textContent = formatMultiplier(val);
       bubble.classList.add('visible');
     }
 

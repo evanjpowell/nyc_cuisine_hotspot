@@ -162,7 +162,8 @@ function updateDotsLayer(restaurants) {
       label = r.ntaName ? `Cluster ${r.cluster} — ${r.ntaName}` : `Cluster ${r.cluster}`;
     }
     const cuisineTag = r.cu ? `<span class="rp-tag rp-cuisine">${r.cu}</span>` : '';
-    const clusterTag = `<span class="rp-tag rp-cluster" style="background:${color}22;color:${color}">${label}</span>`;
+    const clusterOnclick = r.cluster !== 0 ? ` onclick="focusCluster(${r.cluster})"` : '';
+    const clusterTag = `<span class="rp-tag rp-cluster" style="background:${color}22;color:${color}"${clusterOnclick}>${label}</span>`;
     const popupHtml =
       `<div class="rp-inner">` +
         `<div class="rp-accent" style="background:${color}"></div>` +
@@ -416,6 +417,20 @@ function animateSubwayDraw() {
         path.style.strokeDasharray = '';
         path.style.strokeDashoffset = '';
       }, 1350);
+    }
+  });
+}
+
+/**
+ * Close any open popup and open the hotspot polygon popup for the given cluster.
+ * Called when the user clicks the cluster tag in a restaurant popup.
+ */
+function focusCluster(clusterId) {
+  map.closePopup();
+  if (!polygonLayer) return;
+  polygonLayer.eachLayer(function (layer) {
+    if (layer.feature && layer.feature.properties.clusterId === clusterId) {
+      layer.openPopup(layer.getBounds().getCenter());
     }
   });
 }

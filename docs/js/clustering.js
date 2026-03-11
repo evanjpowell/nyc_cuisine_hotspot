@@ -7,7 +7,7 @@ const BASE_EPS = {
   "Staten Island": 700
 };
 
-const MIN_FLOOR = 4;
+const MIN_FLOOR = 3;
 const PROP_FACTOR = 0.015;
 
 /**

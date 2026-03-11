@@ -877,6 +877,15 @@ body,
   color: #1a1a1a;
   line-height: 1.3;
   margin-bottom: 6px;
+  padding-right: 16px; /* keep text clear of Leaflet's × button */
+}
+
+.rp-cluster {
+  cursor: pointer;
+}
+
+.rp-cluster:hover {
+  opacity: 0.75;
 }
 
 .rp-tags {
