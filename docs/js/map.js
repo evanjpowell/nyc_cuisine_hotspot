@@ -81,7 +81,12 @@ function setMapTheme(dark) {
  */
 function getClusterColor(clusterId) {
   if (clusterId === 0) return NOISE_COLOR;
-  return CLUSTER_COLORS[(clusterId - 1) % CLUSTER_COLORS.length];
+  const color = CLUSTER_COLORS[(clusterId - 1) % CLUSTER_COLORS.length];
+  // Yellow (#FFFF33) is invisible on white — swap for amber in light mode
+  if (color === '#FFFF33' && document.documentElement.dataset.theme !== 'dark') {
+    return '#C9A500';
+  }
+  return color;
 }
 
 /**
@@ -255,12 +260,16 @@ function updatePolygonLayer(geojson) {
             `<div class="rp-tags">${countTag}</div>` +
           `</div>` +
         `</div>`;
-      // Subtle pulse fill on click, then settle back
+      // Ripple ring on click
       layer.on('click', function () {
-        layer.setStyle({ fillOpacity: 0.72, opacity: 0.9 });
-        setTimeout(function () {
-          layer.setStyle({ fillOpacity: POLYGON_OPACITY, opacity: 0.7 });
-        }, 200);
+        const rippleIcon = L.divIcon({
+          className: '',
+          html: `<div class="ripple-ring-lg" style="border-color:${accentColor}"></div>`,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0]
+        });
+        const ring = L.marker(layer.getBounds().getCenter(), { icon: rippleIcon, interactive: false }).addTo(map);
+        setTimeout(() => map.removeLayer(ring), 850);
       });
       layer.bindPopup(popupHtml, { className: 'restaurant-popup-wrap', maxWidth: 260 });
     }
@@ -324,11 +333,35 @@ function togglePolygons(visible) {
 }
 
 /**
+ * Flatten MultiLineString features into individual LineString features so that
+ * each segment gets its own SVG <path> element and the draw-on animation works
+ * correctly for every line (including SIR and Rockaway branches).
+ */
+function flattenMultiLineStrings(geojson) {
+  const features = [];
+  for (const f of geojson.features) {
+    if (f.geometry && f.geometry.type === 'MultiLineString') {
+      for (const coords of f.geometry.coordinates) {
+        features.push({
+          type: 'Feature',
+          properties: f.properties,
+          geometry: { type: 'LineString', coordinates: coords }
+        });
+      }
+    } else {
+      features.push(f);
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+/**
  * Initialize the subway lines layer from a GeoJSON FeatureCollection.
  * The layer is added to the map only if the toggle is on, and always
  * kept behind restaurant layers via bringToBack().
  */
 function initSubwayLayer(geojson) {
+  geojson = flattenMultiLineStrings(geojson);
   const dark = document.documentElement.dataset.theme === "dark";
   subwayLayer = L.geoJSON(geojson, {
     style: {
@@ -353,10 +386,38 @@ function toggleSubway(visible) {
     if (visible) {
       subwayLayer.addTo(map);
       subwayLayer.bringToBack();
+      animateSubwayDraw();
     } else {
       map.removeLayer(subwayLayer);
     }
   }
+}
+
+/**
+ * Draw-on animation for subway lines: stroke traces from dashoffset=len → 0.
+ * Replays every time the layer is toggled on.
+ */
+function animateSubwayDraw() {
+  subwayLayer.eachLayer(function (layer) {
+    const path = layer._path;
+    if (path && path.getTotalLength) {
+      const len = path.getTotalLength();
+      path.style.transition = 'none';
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = len;
+      requestAnimationFrame(function () {
+        path.style.transition = 'stroke-dashoffset 1.2s ease-out';
+        path.style.strokeDashoffset = '0';
+      });
+      // Clear dash properties after animation so zoom in Firefox doesn't
+      // produce missing segments (dasharray measured at original scale becomes wrong)
+      setTimeout(function () {
+        path.style.transition = 'none';
+        path.style.strokeDasharray = '';
+        path.style.strokeDashoffset = '';
+      }, 1350);
+    }
+  });
 }
 
 /**
