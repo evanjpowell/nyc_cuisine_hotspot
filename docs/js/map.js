@@ -50,6 +50,11 @@ function initMap() {
     zoomControl: true
   });
 
+  // Custom pane for restaurant dots — sits above the default overlayPane (z 400)
+  // so dots always render on top of hotspot polygons regardless of add order.
+  map.createPane('dotsPane');
+  map.getPane('dotsPane').style.zIndex = 450;
+
   const dark = document.documentElement.dataset.theme === "dark";
   tileLayer = L.tileLayer(dark ? TILE_URL_DARK : TILE_URL_LIGHT, {
     attribution: TILE_ATTRIBUTION,
@@ -110,16 +115,59 @@ function updateDotsLayer(restaurants) {
       fillOpacity: opacity,
       color: color,
       weight: 0.5,
-      opacity: opacity
+      opacity: opacity,
+      pane: 'dotsPane'
     });
+
+    // Hover: scale dot up and reveal nameplate
+    marker.on('mouseover', function () {
+      this.setRadius(DOT_RADIUS * 1.7);
+      this.setStyle({ weight: 1.5 });
+    });
+    marker.on('mouseout', function () {
+      this.setRadius(DOT_RADIUS);
+      this.setStyle({ weight: 0.5 });
+    });
+
+    // Nameplate tooltip on hover
+    marker.bindTooltip(r.n, {
+      permanent: false,
+      direction: 'top',
+      className: 'dot-nameplate',
+      offset: [0, -3]
+    });
+
+    // Ripple ring on click — expands outward from the tapped dot
+    marker.on('click', function () {
+      const rippleIcon = L.divIcon({
+        className: '',
+        html: `<div class="ripple-ring" style="border-color:${color}"></div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0]
+      });
+      const ring = L.marker(marker.getLatLng(), { icon: rippleIcon, interactive: false }).addTo(map);
+      setTimeout(() => map.removeLayer(ring), 700);
+    });
+
+    // Custom popup
     let label;
     if (r.cluster === 0) {
-      label = "Not in a cluster";
+      label = "Unclustered";
     } else {
-      label = r.ntaName ? `Cluster ${r.cluster} (${r.ntaName})` : `Cluster ${r.cluster}`;
+      label = r.ntaName ? `Cluster ${r.cluster} — ${r.ntaName}` : `Cluster ${r.cluster}`;
     }
-    const cuisineInfo = r.cu ? `<br><em>${r.cu}</em>` : "";
-    marker.bindPopup(`<strong>${r.n}</strong>${cuisineInfo}<br>${label}`);
+    const cuisineTag = r.cu ? `<span class="rp-tag rp-cuisine">${r.cu}</span>` : '';
+    const clusterTag = `<span class="rp-tag rp-cluster" style="background:${color}22;color:${color}">${label}</span>`;
+    const popupHtml =
+      `<div class="rp-inner">` +
+        `<div class="rp-accent" style="background:${color}"></div>` +
+        `<div class="rp-body">` +
+          `<div class="rp-name">${r.n}</div>` +
+          `<div class="rp-tags">${cuisineTag}${clusterTag}</div>` +
+        `</div>` +
+      `</div>`;
+    marker.bindPopup(popupHtml, { className: 'restaurant-popup-wrap', maxWidth: 260 });
+
     markers.push(marker);
   }
 
@@ -190,8 +238,19 @@ function updatePolygonLayer(geojson) {
     onEachFeature: function (feature, layer) {
       const count = feature.properties.count || 0;
       const ntaName = feature.properties.ntaName;
-      const title = ntaName ? `Hotspot — ${ntaName}` : "Hotspot Region";
-      layer.bindPopup(`<strong>${title}</strong><br>${count} restaurants`);
+      const clusterId = feature.properties.clusterId || 1;
+      const accentColor = getClusterColor(clusterId);
+      const title = ntaName ? ntaName : "Hotspot Region";
+      const countTag = `<span class="rp-tag rp-cuisine">${count} restaurant${count !== 1 ? 's' : ''}</span>`;
+      const popupHtml =
+        `<div class="rp-inner">` +
+          `<div class="rp-accent" style="background:${accentColor}"></div>` +
+          `<div class="rp-body">` +
+            `<div class="rp-name">${title}</div>` +
+            `<div class="rp-tags">${countTag}</div>` +
+          `</div>` +
+        `</div>`;
+      layer.bindPopup(popupHtml, { className: 'restaurant-popup-wrap', maxWidth: 260 });
     }
   });
 

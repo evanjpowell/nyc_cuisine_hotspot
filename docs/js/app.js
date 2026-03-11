@@ -51,6 +51,7 @@ async function init() {
     initCollapsibles();
     initTheme();
     initMobilePanel();
+    initSliderBubbles();
 
     // Set up event listeners
     document.getElementById("eps-slider").addEventListener("input", onEpsSliderInput);
@@ -272,6 +273,41 @@ function onMinPtsSliderInput() {
   debounceTimer = setTimeout(() => {
     runPipeline();
   }, 300);
+}
+
+// --- Slider value bubbles ---
+
+function initSliderBubbles() {
+  ['eps-slider', 'minpts-slider'].forEach(function (id) {
+    const slider = document.getElementById(id);
+
+    // Wrap the slider in a positioned div so the bubble can be placed above the thumb
+    const wrap = document.createElement('div');
+    wrap.className = 'slider-wrap';
+    slider.parentNode.insertBefore(wrap, slider);
+    wrap.appendChild(slider);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'slider-bubble';
+    wrap.appendChild(bubble);
+
+    function showBubble() {
+      const min = parseFloat(slider.min);
+      const max = parseFloat(slider.max);
+      const val = parseFloat(slider.value);
+      const pct = (val - min) / (max - min);
+      const thumbW = 16; // approximate thumb width in px
+      bubble.style.left = (pct * (slider.offsetWidth - thumbW) + thumbW / 2) + 'px';
+      bubble.textContent = val.toFixed(1) + 'x';
+      bubble.classList.add('visible');
+    }
+
+    slider.addEventListener('input', showBubble);
+    slider.addEventListener('pointerdown', showBubble);
+    slider.addEventListener('pointerup', function () {
+      setTimeout(function () { bubble.classList.remove('visible'); }, 700);
+    });
+  });
 }
 
 // --- Pipeline ---
