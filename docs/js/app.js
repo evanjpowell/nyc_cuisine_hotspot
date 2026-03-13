@@ -69,7 +69,7 @@ async function init() {
     // which causes visual state to diverge from JS state.
     document.getElementById("toggle-dots").checked = true;
     document.getElementById("toggle-polygons").checked = true;
-    document.getElementById("toggle-subway").checked = false;
+    document.getElementById("toggle-subway").checked = true;
     document.getElementById("eps-slider").value = 0;
     document.getElementById("eps-value").textContent = "1x";
     currentEpsMultiplier = 1.0;

@@ -4,7 +4,7 @@ const BASE_EPS = {
   "Manhattan": 350,
   "Brooklyn/Queens": 650,
   "Bronx": 600,
-  "Staten Island": 700
+  "Staten Island": 900
 };
 
 const MIN_FLOOR = 3;
