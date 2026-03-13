@@ -42,6 +42,7 @@ let subwayLayer = null;
 let showDots = true;
 let showPolygons = true;
 let showSubway = true;
+let subwayRetractTimer = null;
 
 /**
  * Initialize the Leaflet map.
@@ -472,11 +473,28 @@ function toggleSubway(visible) {
   showSubway = visible;
   if (subwayLayer) {
     if (visible) {
-      subwayLayer.addTo(map);
-      subwayLayer.bringToBack();
+      // Cancel any in-progress retract and snap paths back to clean state
+      if (subwayRetractTimer !== null) {
+        clearTimeout(subwayRetractTimer);
+        subwayRetractTimer = null;
+        subwayLayer.eachLayer(function (layer) {
+          if (layer._path) {
+            layer._path.style.transition = 'none';
+            layer._path.style.strokeDasharray = '';
+            layer._path.style.strokeDashoffset = '';
+          }
+        });
+      }
+      if (!map.hasLayer(subwayLayer)) {
+        subwayLayer.addTo(map);
+        subwayLayer.bringToBack();
+      }
       animateSubwayDraw();
     } else {
-      map.removeLayer(subwayLayer);
+      subwayRetractTimer = animateSubwayRetract(function () {
+        subwayRetractTimer = null;
+        map.removeLayer(subwayLayer);
+      });
     }
   }
 }
@@ -506,6 +524,29 @@ function animateSubwayDraw() {
       }, 1350);
     }
   });
+}
+
+/**
+ * Retract animation for subway lines: stroke traces from 0 → dashoffset=len,
+ * then calls callback (to remove the layer) once complete.
+ */
+function animateSubwayRetract(callback) {
+  const duration = 1000;
+  subwayLayer.eachLayer(function (layer) {
+    const path = layer._path;
+    if (path && path.getTotalLength) {
+      const len = path.getTotalLength();
+      // Establish fully-drawn dash state with no transition, then animate back
+      path.style.transition = 'none';
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = '0';
+      requestAnimationFrame(function () {
+        path.style.transition = `stroke-dashoffset ${duration}ms ease-in`;
+        path.style.strokeDashoffset = len;
+      });
+    }
+  });
+  return setTimeout(callback, duration + 50);
 }
 
 /**
