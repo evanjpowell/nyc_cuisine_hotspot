@@ -24,6 +24,9 @@ const POLYGON_COLORS_DARK = [
 ];
 const POLYGON_OPACITY = 0.5;
 
+// Radial animation origin — Herald Square, used for the "rain" entrance effect
+const HERALD_SQ = { lat: 40.7487, lng: -73.9882 };
+
 const SUBWAY_COLOR = "#7f7f7f";
 const SUBWAY_COLOR_DARK = "#888888";
 
@@ -38,7 +41,7 @@ let polygonLayer = null;
 let subwayLayer = null;
 let showDots = true;
 let showPolygons = true;
-let showSubway = false;
+let showSubway = true;
 
 /**
  * Initialize the Leaflet map.
@@ -180,12 +183,94 @@ function updateDotsLayer(restaurants) {
   dotsLayer = L.layerGroup(markers);
   if (showDots) {
     dotsLayer.addTo(map);
-    // Fade in the dots pane — remove/re-add class to restart the animation
-    const pane = map.getPane('dotsPane');
-    pane.classList.remove('dots-fade-in');
-    void pane.offsetWidth; // force reflow so the animation restarts
-    pane.classList.add('dots-fade-in');
+    rainDotsIn(dotsLayer.getLayers());
   }
+}
+
+/**
+ * Staggered north→south dot entrance — each dot scales up from 0 and fades in
+ * with a delay proportional to its latitude rank. Respects prefers-reduced-motion.
+ */
+function rainDotsIn(layers) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  // Sort by distance from Herald Square — closest appears first
+  const sorted = layers.slice().sort(function (a, b) {
+    const la = a.getLatLng(), lb = b.getLatLng();
+    const da = Math.hypot(la.lat - HERALD_SQ.lat, la.lng - HERALD_SQ.lng);
+    const db = Math.hypot(lb.lat - HERALD_SQ.lat, lb.lng - HERALD_SQ.lng);
+    return da - db;
+  });
+
+  const count = sorted.length;
+  const totalSpread = 900; // ms between first and last dot starting
+
+  sorted.forEach(function (layer, i) {
+    const path = layer._path;
+    if (!path) return;
+
+    const delay = (i / count) * totalSpread;
+
+    path.style.transformBox = 'fill-box';
+    path.style.transformOrigin = 'center';
+    path.style.transform = 'scale(0)';
+    path.style.opacity = '0';
+    path.style.transition =
+      `opacity 0.35s ease-out ${delay}ms, ` +
+      `transform 0.4s cubic-bezier(0.34,1.56,0.64,1) ${delay}ms`;
+
+    // Double rAF ensures the browser paints the hidden state before transitioning
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        path.style.transform = 'scale(1)';
+        path.style.opacity = '';
+      });
+    });
+  });
+}
+
+/**
+ * Staggered radial entrance for hotspot polygons, expanding outward from Herald Square.
+ * Each polygon scales up from its own centroid with a delay proportional to its distance.
+ * Respects prefers-reduced-motion.
+ */
+function rainPolygonsIn(geoJsonLayer) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const layers = [];
+  geoJsonLayer.eachLayer(function (layer) { layers.push(layer); });
+
+  const sorted = layers.slice().sort(function (a, b) {
+    const ca = a.getBounds().getCenter(), cb = b.getBounds().getCenter();
+    const da = Math.hypot(ca.lat - HERALD_SQ.lat, ca.lng - HERALD_SQ.lng);
+    const db = Math.hypot(cb.lat - HERALD_SQ.lat, cb.lng - HERALD_SQ.lng);
+    return da - db;
+  });
+
+  const count = sorted.length;
+  const totalSpread = 900;
+
+  sorted.forEach(function (layer, i) {
+    const path = layer._path;
+    if (!path) return;
+
+    const delay = (i / count) * totalSpread;
+
+    path.style.transformBox = 'fill-box';
+    path.style.transformOrigin = 'center';
+    path.style.transform = 'scale(0)';
+    path.style.opacity = '0';
+    path.style.transition =
+      `opacity 0.45s ease-out ${delay}ms, ` +
+      `transform 0.55s cubic-bezier(0.34,1.56,0.64,1) ${delay}ms`;
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        path.style.transform = 'scale(1)';
+        path.style.opacity = '';
+      });
+    });
+  });
 }
 
 /**
@@ -278,6 +363,7 @@ function updatePolygonLayer(geojson) {
 
   if (showPolygons) {
     polygonLayer.addTo(map);
+    rainPolygonsIn(polygonLayer);
   }
 }
 
@@ -375,6 +461,7 @@ function initSubwayLayer(geojson) {
   if (showSubway) {
     subwayLayer.addTo(map);
     subwayLayer.bringToBack();
+    animateSubwayDraw();
   }
 }
 
