@@ -114,10 +114,13 @@ function updateDotsLayer(restaurants) {
     dotsLayer = null;
   }
 
+  const allNoise = restaurants.length > 0 && restaurants.every(r => r.cluster === 0);
+  const noiseOpacity = allNoise ? 0.6 : NOISE_OPACITY;
+
   const markers = [];
   for (const r of restaurants) {
     const color = getClusterColor(r.cluster);
-    const opacity = r.cluster === 0 ? NOISE_OPACITY : CLUSTER_OPACITY;
+    const opacity = r.cluster === 0 ? noiseOpacity : CLUSTER_OPACITY;
     const marker = L.circleMarker([r.la, r.lo], {
       radius: DOT_RADIUS,
       fillColor: color,
