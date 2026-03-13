@@ -56,6 +56,8 @@ async function init() {
     // Set up event listeners
     document.getElementById("eps-slider").addEventListener("input", onEpsSliderInput);
     document.getElementById("minpts-slider").addEventListener("input", onMinPtsSliderInput);
+    document.getElementById("reset-params").addEventListener("click", resetParams);
+    document.getElementById("random-cuisine").addEventListener("click", pickRandomCuisine);
 
     document.getElementById("toggle-dots").addEventListener("change", function () {
       toggleDots(this.checked);
@@ -284,6 +286,23 @@ function onMinPtsSliderInput() {
   debounceTimer = setTimeout(() => {
     runPipeline();
   }, 300);
+}
+
+function resetParams() {
+  document.getElementById("eps-slider").value = 0;
+  document.getElementById("eps-value").textContent = "1x";
+  currentEpsMultiplier = 1.0;
+  document.getElementById("minpts-slider").value = 0;
+  document.getElementById("minpts-value").textContent = "1x";
+  currentMinPtsMultiplier = 1.0;
+  runPipeline();
+}
+
+function pickRandomCuisine() {
+  if (!cuisineList.length) return;
+  const pick = cuisineList[Math.floor(Math.random() * cuisineList.length)];
+  setSelectedCuisines([pick.name]);
+  runPipeline();
 }
 
 // --- Slider value bubbles ---

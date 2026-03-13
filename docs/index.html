@@ -33,7 +33,10 @@
       <p class="subtitle">DBSCAN clustering of NYC restaurant data</p>
 
       <div class="control-group">
-        <label>Cuisine</label>
+        <div class="control-label-row">
+          <label>Cuisine</label>
+          <button id="random-cuisine" class="icon-btn"><span class="icon-btn-label">random</span>🎲</button>
+        </div>
         <div id="cuisine-dropdown" class="multi-select">
           <div id="cuisine-toggle" class="multi-select-toggle">Loading cuisines...</div>
           <div id="cuisine-menu" class="multi-select-menu">
@@ -48,7 +51,10 @@
       <div class="control-group">
         <div class="collapsible-header">
           <label>Parameters</label>
-          <button class="collapse-btn" data-target="params-content">^</button>
+          <div class="collapsible-header-actions">
+            <button id="reset-params" class="icon-btn"><span class="icon-btn-label">reset</span>↺</button>
+            <button class="collapse-btn" data-target="params-content">^</button>
+          </div>
         </div>
         <div id="params-content">
           <label><a href="#" id="eps-link">Eps Multiplier</a></label>

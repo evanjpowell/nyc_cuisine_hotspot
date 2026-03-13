@@ -94,6 +94,61 @@ body {
   color: #666;
 }
 
+/* Row that groups a section label with an action icon button */
+.control-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.control-label-row label {
+  margin-bottom: 0;
+}
+
+/* Groups reset + collapse buttons together on the right */
+.collapsible-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Subtle icon buttons (reset ↺, random 🎲) */
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #bbb;
+  padding: 0;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.icon-btn:hover {
+  color: #555;
+  transform: scale(1.2);
+}
+
+.icon-btn-label {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 0.22s ease-out, opacity 0.18s ease-out;
+}
+
+.icon-btn:hover .icon-btn-label {
+  max-width: 56px;
+  opacity: 1;
+}
+
 /* Spacing for second parameter sub-label */
 .param-section {
   margin-top: 10px;
@@ -1001,6 +1056,14 @@ body,
 
 [data-theme="dark"] .collapse-btn:hover {
   color: #aaa;
+}
+
+[data-theme="dark"] .icon-btn {
+  color: #555;
+}
+
+[data-theme="dark"] .icon-btn:hover {
+  color: #bbb;
 }
 
 [data-theme="dark"] .multi-select-toggle {
